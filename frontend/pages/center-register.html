@@ -195,8 +195,9 @@
         </div>
     </div>
 
-    <script src="../assets/api.js"></script>
-    <script>
+    <script type="module">
+        import { apiFetch } from '../assets/api.js';
+
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 

@@ -149,3 +149,20 @@ def admin_logs():
         return jsonify(error=str(e)), 500
     finally:
         session.close()
+
+
+@adopt_bp.route('/admin/pending-centers', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_pending_centers():
+    result, status = list_unverified_centers()
+    return jsonify(result), status
+
+
+@adopt_bp.route('/admin/verify-center/<int:center_id>', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def verify_adoption_center(center_id):
+    admin_user_id = get_jwt_identity()
+    result, status = verify_center(center_id, admin_user_id)
+    return jsonify(result), status

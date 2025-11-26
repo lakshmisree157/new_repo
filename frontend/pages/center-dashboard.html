@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Center Dashboard</title>
+<link rel="stylesheet" href="../assets/styles.css" />
+</head>
+<body>
+<header>
+    <h1>Adoption Center Dashboard</h1>
+    <button id="logoutBtn">Logout</button>
+</header>
+<nav>
+    <button id="myPetsTab">My Pets</button>
+    <button id="requestsTab">Requests</button>
+    <button id="feedbackTab">Feedback</button>
+    <button id="editProfileTab">Edit Profile</button>
+</nav>
+<main>
+    <section id="myPetsSection" class="tabContent">
+        <h2>My Pets</h2>
+        <ul id="petsList"></ul>
+        <p id="noPets" style="display:none;">You have no pets listed.</p>
+    </section>
+    <section id="requestsSection" class="tabContent" style="display:none;">
+        <h2>Requests</h2>
+        <ul id="requestsList"></ul>
+        <p id="noRequests" style="display:none;">No adoption requests.</p>
+    </section>
+    <section id="feedbackSection" class="tabContent" style="display:none;">
+        <h2>Feedback</h2>
+        <ul id="feedbackList"></ul>
+        <p id="noFeedback" style="display:none;">No feedback available.</p>
+    </section>
+    <section id="editProfileSection" class="tabContent" style="display:none;">
+        <h2>Edit Profile</h2>
+        <div id="profileDetails"></div>
+        <button id="editProfileBtn">Edit Profile</button>
+        <form id="editProfileForm" style="display:none;">
+            <button type="submit">Save</button>
+            <button type="button" id="cancelEditBtn">Cancel</button>
+        </form>
+    </section>
+</main>
+<script type="module">
+import { apiFetch, getProfile, updateProfile } from '../assets/api.js';
+
+const token = localStorage.getItem('access_token');
+if (!token) {
+    alert('Please login first.');
+    window.location.href = '/login.html';
+}
+
+// Store center ID for API calls
+let centerId = null;
+
+const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('access_token');
+    window.location.href = '/login.html';
+});
+
+const tabs = {
+    myPets: document.getElementById('myPetsSection'),
+    requests: document.getElementById('requestsSection'),
+    feedback: document.getElementById('feedbackSection'),
+    editProfile: document.getElementById('editProfileSection')
+};
+
+function showTab(tabName) {
+    Object.values(tabs).forEach(section => section.style.display = 'none');
+    tabs[tabName].style.display = 'block';
+}
+
+document.getElementById('myPetsTab').addEventListener('click', () => {
+    showTab('myPets');
+    loadPets();
+});
+document.getElementById('requestsTab').addEventListener('click', () => {
+    showTab('requests');
+    loadRequests();
+});
+document.getElementById('feedbackTab').addEventListener('click', () => {
+    showTab('feedback');
+    loadFeedback();
+});
+document.getElementById('editProfileTab').addEventListener('click', () => {
+    showTab('editProfile');
+    loadUserProfile();
+});
+
+const petsList = document.getElementById('petsList');
+const noPets = document.getElementById('noPets');
+
+const addPetForm = document.createElement('form');
+addPetForm.style.marginTop = '1em';
+addPetForm.innerHTML = `
+    <h3>Add New Pet</h3>
+    <label>Name: <input type="text" name="name" required></label><br/>
+    <label>Breed: <input type="text" name="breed"></label><br/>
+    <label>Age (months): <input type="number" name="age" min="0"></label><br/>
+    <label>Gender: 
+        <select name="gender">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+        </select>
+    </label><br/>
+    <label>Description:<br/><textarea name="description" rows="3" cols="30"></textarea></label><br/>
+    <button type="submit">Add Pet</button>
+`;
+
+addPetForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!centerId) {
+        alert('Center ID is not set.');
+        return;
+    }
+    const formData = new FormData(addPetForm);
+    const data = {};
+    formData.forEach((value, key) => {
+        if (key === 'age') {
+            data[key] = parseInt(value) || 0;
+        } else {
+            data[key] = value;
+        }
+    });
+    data['species'] = 'dog'; // fixed species as per backend constraint
+    data['center_id'] = centerId;
+
+    try {
+        const res = await apiFetch('/api/pets', 'POST', data, token);
+        alert(res.message || 'Pet added successfully');
+        addPetForm.reset();
+        await loadPets();
+    } catch (err) {
+        alert('Failed to add pet: ' + err.message);
+    }
+});
+
+async function loadPets() {
+    if (!centerId) return;
+    try {
+        const result = await apiFetch(`/api/pets/center/${centerId}/animals`, 'GET', null, token);
+        if (result.animals && result.animals.length > 0) {
+            noPets.style.display = 'none';
+            petsList.innerHTML = '';
+            for (const pet of result.animals) {
+                const li = document.createElement('li');
+                let adoptStatus = pet.is_adopted ? 'Yes' : 'No';
+                li.innerHTML = `
+                    <strong>${pet.name}</strong> - Adopted: ${adoptStatus} - Breed: ${pet.breed || 'N/A'}
+                    <button onclick="toggleAdoptStatus('${pet.id}', ${!pet.is_adopted})">${pet.is_adopted ? 'Mark as Available' : 'Mark as Adopted'}</button>
+                `;
+                petsList.appendChild(li);
+            }
+        } else {
+            petsList.innerHTML = '';
+            noPets.style.display = 'block';
+        }
+    } catch (error) {
+        alert('Failed to load pets: ' + error.message);
+    }
+}
+
+// Place the add pet form below pets list
+petsList.parentNode.insertBefore(addPetForm, petsList.nextSibling);
+
+async function toggleAdoptStatus(animalId, newStatus) {
+    try {
+        const res = await apiFetch(`/api/pets/${animalId}/status`, 'PUT', {is_adopted: newStatus}, token);
+        alert(res.message || `Pet marked as ${newStatus ? 'adopted' : 'available'}`);
+        await loadPets();
+    } catch (err) {
+        alert('Failed to update adoption status: ' + err.message);
+    }
+}
+
+const requestsList = document.getElementById('requestsList');
+const noRequests = document.getElementById('noRequests');
+
+async function loadRequests() {
+    if (!centerId) return;
+    try {
+        const result = await apiFetch(`/api/adoptions/center/${centerId}/requests`, 'GET', null, token);
+        if (result.requests && result.requests.length > 0) {
+            noRequests.style.display = 'none';
+            requestsList.innerHTML = '';
+            for (const req of result.requests) {
+                const li = document.createElement('li');
+                let disableButtons = req.status === 'approved' || req.status === 'rejected';
+                li.innerHTML = `
+                    Request from adopter ${req.adopter_id} for request #${req.request_id} - Status: ${req.status}
+                    <button onclick="approveRequest(${req.request_id})" ${disableButtons ? 'disabled' : ''}>Approve</button>
+                    <button onclick="rejectRequest(${req.request_id})" ${disableButtons ? 'disabled' : ''}>Reject</button>
+                `;
+                requestsList.appendChild(li);
+            }
+        } else {
+            requestsList.innerHTML = '';
+            noRequests.style.display = 'block';
+        }
+    } catch (error) {
+        alert('Failed to load requests: ' + error.message);
+    }
+}
+
+window.approveRequest = async function(requestId) {
+    try {
+        const res = await apiFetch(`/api/adoptions/request/${requestId}/status`, 'PATCH', {status: 'approved'}, token);
+        alert(res.message || 'Request approved.');
+        loadRequests();
+    } catch(err) {
+        alert('Failed to approve request: ' + err.message);
+    }
+};
+
+window.rejectRequest = async function(requestId) {
+    try {
+        const res = await apiFetch(`/api/adoptions/request/${requestId}/status`, 'PATCH', {status: 'rejected'}, token);
+        alert(res.message || 'Request rejected.');
+        loadRequests();
+    } catch(err) {
+        alert('Failed to reject request: ' + err.message);
+    }
+};
+
+const feedbackList = document.getElementById('feedbackList');
+const noFeedback = document.getElementById('noFeedback');
+async function loadFeedback() {
+    if (!centerId) return;
+    try {
+        // Assuming backend has an endpoint to fetch feedback for center's pets
+        // This may need backend support if missing
+        const response = await fetch(`/api/adoptions/center/${centerId}/feedback`, {
+            headers: { Authorization: 'Bearer ' + token }
+        });
+        const data = await response.json();
+        if (data.feedback && data.feedback.length > 0) {
+            noFeedback.style.display = 'none';
+            feedbackList.innerHTML = '';
+            for (const fb of data.feedback) {
+                const li = document.createElement('li');
+                li.innerHTML = `Request ID: ${fb.request_id} - Notes: ${fb.notes} - Health: ${fb.health_status} - Follow-up: ${fb.followup_date}`;
+                feedbackList.appendChild(li);
+            }
+        } else {
+            feedbackList.innerHTML = '';
+            noFeedback.style.display = 'block';
+        }
+    } catch(err) {
+        alert('Failed to load feedback: ' + err.message);
+    }
+}
+
+const profileDetails = document.getElementById('profileDetails');
+const editProfileBtn = document.getElementById('editProfileBtn');
+const editProfileForm = document.getElementById('editProfileForm');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
+
+let currentUser = null;
+async function loadUserProfile() {
+    try {
+        const data = await getProfile(token);
+        console.debug('Center Dashboard - User profile data:', data);  // Added debug log
+        if (data && data.user) {
+            currentUser = data.user;
+            centerId = currentUser.center?.center_id || null;
+            showProfile(currentUser);
+        } else {
+            alert('User profile data is missing or incomplete.');
+        }
+    } catch (error) {
+        alert('Failed to load profile: ' + error.message);
+    }
+}
+
+function showProfile(user) {
+    profileDetails.innerHTML = `
+        <p><strong>Username:</strong> ${user.username}</p>
+        <p><strong>Email:</strong> ${user.email}</p>
+        <p><strong>Role:</strong> Center</p>
+        ${user.center ? `
+        <p><strong>Center Name:</strong> ${user.center.center_name || 'N/A'}</p>
+        <p><strong>Location:</strong> ${user.center.location || 'N/A'}</p>
+        <p><strong>Contact Number:</strong> ${user.center.contact_number || 'N/A'}</p>
+        ` : '<p>User center details not found.</p>'}
+    `;
+}
+
+editProfileBtn.addEventListener('click', () => {
+    populateEditForm(currentUser);
+});
+
+cancelEditBtn.addEventListener('click', () => {
+    editProfileForm.style.display = 'none';
+    editProfileBtn.style.display = 'block';
+});
+
+function populateEditForm(user) {
+    editProfileForm.innerHTML = `
+        <label>Center Name: <input type="text" name="center_name" value="${user.center?.center_name || ''}"/></label><br/>
+        <label>Location: <input type="text" name="location" value="${user.center?.location || ''}"/></label><br/>
+        <label>Contact Number: <input type="text" name="contact_number" value="${user.center?.contact_number || ''}"/></label><br/>
+    `;
+    editProfileForm.style.display = 'block';
+    editProfileBtn.style.display = 'none';
+}
+
+editProfileForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const formData = new FormData(editProfileForm);
+    const data = {};
+    formData.forEach((val, key) => data[key] = val);
+
+    try {
+        const res = await updateProfile(data, token);
+        alert(res.message || 'Profile updated.');
+        editProfileForm.style.display = 'none';
+        editProfileBtn.style.display = 'block';
+        await loadUserProfile();
+    } catch (err) {
+        alert('Failed to update profile: ' + err.message);
+    }
+});
+
+// Load initial tab and data
+showTab('myPets');
+loadUserProfile();
+
+</script>
+</body>
+</html>

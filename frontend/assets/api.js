@@ -1,147 +1,76 @@
-﻿/**
- * API Helper: apiFetch()
- * Utility for making authenticated API calls to the Flask backend.
- * Uses JWT token stored in localStorage (key: 'authToken').
- * 
- * Us *   apiFetch('/api/pets', 'GET').then(r => console.log(r.data))
- *   apiFetch('/api/auth/register', 'POST', { username: 'john', email: 'john@example.com', password: 'pass123', role: 'adopter' })
- */
+﻿const API_BASE_URL =
+    window.__API_BASE_URL ||
+    document.documentElement?.dataset?.apiBaseUrl ||
+    '';
 
-const API_BASE = 'http://localhost:4000';
-
-/**
- * Make an authenticated API call with JWT token in Authorization header.
- * @param {string} endpoint - API endpoint path (e.g., '/api/pets')
- * @param {string} method - HTTP method (GET, POST, PATCH, DELETE, PUT)
- * @param {object} data - Request body (optional, for POST/PATCH/PUT)
- * @returns {Promise<{status: number, data: object}>} - { status, data }
- */
-async function apiFetch(endpoint, method = 'GET', data = null) {
-    const token = localStorage.getItem('authToken');
-
-    const headers = { 'Content-Type': 'application/json' };
+async function apiFetch(endpoint, method = 'GET', data = null, token = null) {
+    const options = {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    };
     if (token) {
-        headers['Authorization'] = 'Bearer ' + token;
-        console.log('[apiFetch] Token found, using Authorization header');
-    } else {
-        console.log('[apiFetch] No token, request is unauthenticated');
+        options.headers['Authorization'] = 'Bearer ' + token;
     }
-
-    const options = { method, headers };
-    if (data && (method === 'POST' || method === 'PATCH' || method === 'PUT')) {
+    if (data) {
         options.body = JSON.stringify(data);
-        console.log('[apiFetch]', method, endpoint, 'body:', data);
-    } else {
-        console.log('[apiFetch]', method, endpoint);
     }
 
     try {
-        const response = await fetch(API_BASE + endpoint, options);
-        const contentType = response.headers.get('content-type') || '';
-        
-        let body;
-        if (contentType.includes('application/json')) {
-            body = await response.json();
-        } else {
-            body = { text: await response.text() };
+        const response = await fetch(API_BASE_URL + endpoint, options);
+        const json = await response.json();
+        if (!response.ok) {
+            throw new Error(json.error || 'API error');
         }
-
-        console.log('[apiFetch] response:', response.status, body);
-
-        // Return status and data for caller to decide how to handle errors
-        return { status: response.status, data: body };
-    } catch (err) {
-        console.error('[apiFetch] ERROR:', err);
-        throw err;
+        return json;
+    } catch (error) {
+        console.error('API fetch error:', error);
+        throw error;
     }
 }
 
-/**
- * Register a new user and return result.
- * @param {string} username 
- * @param {string} email 
- * @param {string} password 
- * @param {string} role - 'adopter', 'center', or 'admin'
- * @param {object} roleData - role-specific fields (center_name, full_name, etc.)
- * @returns {Promise<object>} - backend response
- */
-async function register(username, email, password, role, roleData = {}) {
-    const payload = {
-        username,
-        email,
-        password,
-        role,
-        ...roleData
-    };
-    const resp = await apiFetch('/api/auth/register', 'POST', payload);
-    return resp.data;
+// Adoption Admin API
+async function getPendingCenters(token) {
+    return apiFetch('/adoptions/admin/pending-centers', 'GET', null, token);
 }
 
-/**
- * Login user: authenticate and store token + user info.
- * @param {string} email 
- * @param {string} password 
- * @returns {Promise<object>} - backend response
- */
+async function verifyCenter(centerId, token) {
+    return apiFetch(`/adoptions/admin/verify-center/${centerId}`, 'POST', null, token);
+}
+
+// Profile APIs
+
+async function getProfile(token) {
+    return apiFetch('/api/auth/profile', 'GET', null, token);
+}
+
+async function updateProfile(data, token) {
+    return apiFetch('/api/auth/profile', 'PATCH', data, token);
+}
+
 async function login(email, password) {
-    const resp = await apiFetch('/api/auth/login', 'POST', { email, password });
-    const { status, data } = resp;
-
-    // Backend returns: { message, access_token, user: { user_id, username, email, role } }
-    if (status === 200 && data && data.access_token) {
-        localStorage.setItem('authToken', data.access_token);
-        if (data.user) {
-            localStorage.setItem('userId', data.user.user_id || '');
-            localStorage.setItem('username', data.user.username || '');
-            localStorage.setItem('userRole', data.user.role || '');
+    const response = await fetch(API_BASE_URL + '/api/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email, password})
+    });
+    const data = await response.json();
+    if (response.ok) {
+        if (data.access_token) {
+            localStorage.setItem('access_token', data.access_token);
         }
-        console.log('[login] Success. Token and user stored.');
+        return data;
     } else {
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('username');
-        localStorage.removeItem('userRole');
-        console.log('[login] Failed. Cleared token.');
+        throw new Error(data.error || 'Login failed');
     }
-
-    return data;
 }
 
-/**
- * Logout: clear localStorage.
- */
-function logout() {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userId');
-    localStorage.removeItem('username');
-    localStorage.removeItem('userRole');
-    console.log('[logout] Cleared localStorage');
-}
+export { 
+    apiFetch,
+    getPendingCenters, 
+    verifyCenter, 
+    getProfile, 
+    updateProfile, 
+    login };
 
-/**
- * Check if user is authenticated (has token).
- * @returns {boolean}
- */
-function isAuthenticated() {
-    return !!localStorage.getItem('authToken');
-}
-
-/**
- * Get current user from localStorage.
- * @returns {object} - { userId, username, role }
- */
-function getCurrentUser() {
-    return {
-        userId: localStorage.getItem('userId'),
-        username: localStorage.getItem('username'),
-        role: localStorage.getItem('userRole')
-    };
-}
-
-/**
- * Get current auth token.
- * @returns {string|null}
- */
-function getAuthToken() {
-    return localStorage.getItem('authToken');
-}

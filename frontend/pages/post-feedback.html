@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Post Adoption Feedback</title>
+    <link rel="stylesheet" href="../assets/styles.css" />
+</head>
+<body>
+    <header>
+        <h1>Post Adoption Feedback</h1>
+        <button id="logoutBtn">Logout</button>
+    </header>
+    <main>
+        <form id="feedbackForm">
+            <label for="requestId">Adoption Request ID:</label>
+            <input type="text" id="requestId" name="requestId" readonly />
+
+            <label for="followupDate">Follow-up Date:</label>
+            <input type="date" id="followupDate" name="followupDate" required />
+
+            <label for="healthStatus">Health Status:</label>
+            <input type="text" id="healthStatus" name="healthStatus" required />
+
+            <label for="notes">Notes:</label>
+            <textarea id="notes" name="notes" rows="5" required></textarea>
+
+            <button type="submit" id="submitBtn">Submit Feedback</button>
+        </form>
+    </main>
+<script type="module">
+import { apiFetch } from '../assets/api.js';
+
+const token = localStorage.getItem('access_token');
+const urlParams = new URLSearchParams(window.location.search);
+const requestId = urlParams.get('request_id');
+
+const requestIdInput = document.getElementById('requestId');
+const feedbackForm = document.getElementById('feedbackForm');
+const submitBtn = document.getElementById('submitBtn');
+
+if (!requestId) {
+    alert('Missing adoption request ID in URL.');
+    window.location.href = '/my-requests.html';
+} else {
+    requestIdInput.value = requestId;
+}
+
+// Logout button handler
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('access_token');
+    window.location.href = '/login.html';
+});
+
+feedbackForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    const payload = {
+        followup_date: document.getElementById('followupDate').value,
+        health_status: document.getElementById('healthStatus').value,
+        notes: document.getElementById('notes').value
+    };
+
+    try {
+        const result = await apiFetch(`/api/adoptions/request/${requestId}/post-tracking`, 'POST', payload, token);
+
+        if (result.message) {
+            alert('Feedback submitted successfully.');
+            window.location.href = '/my-requests.html';
+        } else {
+            alert('Failed to submit feedback: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Failed to submit feedback: ' + error.message);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Feedback';
+    }
+});
+</script>
+</body>
+</html>

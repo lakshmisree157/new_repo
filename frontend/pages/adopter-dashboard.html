@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Adopter Dashboard</title>
+  <link rel="stylesheet" href="../assets/styles.css" />
+</head>
+<body>
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">Adopter Workspace</p>
+      <h1>Welcome, <span id="welcomeName">Friend</span></h1>
+    </div>
+    <div class="header-actions">
+      <button id="logoutBtn" class="ghost-btn">Logout</button>
+      <button id="profileToggle" class="profile-icon" aria-label="Open profile panel">
+        <span id="profileInitials">A</span>
+      </button>
+    </div>
+  </header>
+
+  <nav class="dashboard-tabs">
+    <button data-tab="availableDogsSection" class="active">Available Dogs</button>
+    <button data-tab="myRequestsSection">My Requests</button>
+  </nav>
+
+  <main class="dashboard-main">
+    <section id="availableDogsSection" class="tabContent">
+      <div class="section-header">
+        <div>
+          <h2>Available Dogs</h2>
+          <p>Browse verified center listings and send adoption requests.</p>
+        </div>
+      </div>
+      <div id="dogsGrid" class="cards-grid"></div>
+      <p id="noDogs" class="empty-state hidden">No dogs available right now. Please check back soon.</p>
+    </section>
+
+    <section id="myRequestsSection" class="tabContent hidden">
+      <div class="section-header">
+        <div>
+          <h2>My Requests</h2>
+          <p>Track every request and submit post-adoption feedback.</p>
+        </div>
+      </div>
+      <div id="requestsContainer"></div>
+      <p id="noRequests" class="empty-state hidden">You have not sent any adoption requests yet.</p>
+    </section>
+  </main>
+
+  <aside id="profilePanel" class="profile-panel hidden" aria-hidden="true">
+    <div class="profile-panel__content">
+      <button id="closeProfilePanel" class="panel-close" aria-label="Close profile panel">&times;</button>
+      <h3>Profile</h3>
+      <p class="muted" id="profileEmail">email@example.com</p>
+      <form id="profileForm">
+        <div class="form-grid">
+          <label>
+            Full Name
+            <input type="text" name="full_name" disabled />
+          </label>
+          <label>
+            Address
+            <input type="text" name="address" disabled />
+          </label>
+          <label>
+            Phone Number
+            <input type="text" name="phone_number" disabled />
+          </label>
+          <label>
+            Lifestyle
+            <select name="lifestyle" disabled>
+              <option value="">Select</option>
+              <option value="active">Active</option>
+              <option value="moderate">Moderate</option>
+              <option value="quiet">Quiet</option>
+            </select>
+          </label>
+          <label>
+            Home Environment
+            <select name="home_environment" disabled>
+              <option value="">Select</option>
+              <option value="apartment">Apartment</option>
+              <option value="house">House</option>
+              <option value="farm">Farm</option>
+            </select>
+          </label>
+        </div>
+        <div class="panel-actions">
+          <button type="button" id="editProfileBtn" class="ghost-btn">Edit</button>
+          <button type="submit" id="saveProfileBtn" class="primary-btn" disabled>Save</button>
+          <button type="button" id="discardProfileBtn" class="ghost-btn" disabled>Discard</button>
+        </div>
+      </form>
+    </div>
+  </aside>
+  <div id="profileOverlay" class="panel-overlay hidden"></div>
+
+  <div id="dogDetailsModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button class="modal-close" id="closeDogModal" aria-label="Close dog details">&times;</button>
+      <div class="modal-hero">
+        <div class="avatar-lg" id="modalDogAvatar">🐾</div>
+        <div>
+          <h3 id="modalDogName"></h3>
+          <p id="modalDogBreed" class="muted"></p>
+        </div>
+      </div>
+      <ul class="modal-details">
+        <li><strong>Age:</strong> <span id="modalDogAge"></span></li>
+        <li><strong>Gender:</strong> <span id="modalDogGender"></span></li>
+        <li><strong>Center:</strong> <span id="modalDogCenter"></span></li>
+      </ul>
+      <p id="modalDogDescription" class="modal-description"></p>
+      <button id="requestAdoptBtn" class="primary-btn full-width">Send Request</button>
+    </div>
+  </div>
+
+  <div id="feedbackModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <button class="modal-close" id="closeFeedbackModal" aria-label="Close feedback form">&times;</button>
+      <h3>Post-Adoption Feedback</h3>
+      <p class="muted" id="feedbackDogName">Buddy</p>
+      <form id="feedbackForm">
+        <label>
+          Follow-up Date
+          <input type="date" name="followup_date" required />
+        </label>
+        <label>
+          Health Status
+          <select name="health_status" required>
+            <option value="good">Good</option>
+            <option value="average">Average</option>
+            <option value="poor">Poor</option>
+          </select>
+        </label>
+        <label>
+          Notes
+          <textarea name="notes" rows="4" required></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="submit" class="primary-btn">Submit Feedback</button>
+          <button type="button" id="cancelFeedbackBtn" class="ghost-btn">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { apiFetch, getProfile, updateProfile } from '../assets/api.js';
+
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      window.location.href = '/adopter-login';
+    }
+
+    const state = {
+      user: null,
+      dogs: [],
+      requests: [],
+      requestedDogIds: new Set(),
+      selectedDog: null,
+      selectedDogCenter: null,
+      editingProfile: false,
+      feedbackRequestId: null
+    };
+
+    const welcomeNameEl = document.getElementById('welcomeName');
+    const profileInitialsEl = document.getElementById('profileInitials');
+    const profileEmailEl = document.getElementById('profileEmail');
+    const profilePanel = document.getElementById('profilePanel');
+    const profileOverlay = document.getElementById('profileOverlay');
+    const editProfileBtn = document.getElementById('editProfileBtn');
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const discardProfileBtn = document.getElementById('discardProfileBtn');
+    const profileForm = document.getElementById('profileForm');
+    const dogsGrid = document.getElementById('dogsGrid');
+    const noDogs = document.getElementById('noDogs');
+    const requestsContainer = document.getElementById('requestsContainer');
+    const noRequests = document.getElementById('noRequests');
+    const dogModal = document.getElementById('dogDetailsModal');
+    const feedbackModal = document.getElementById('feedbackModal');
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('access_token');
+      window.location.href = '/adopter-login';
+    });
+
+    document.querySelectorAll('.dashboard-tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.dashboard-tabs button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tabContent').forEach(section => section.classList.add('hidden'));
+        document.getElementById(btn.dataset.tab).classList.remove('hidden');
+        if (btn.dataset.tab === 'availableDogsSection') {
+          renderDogs();
+        } else {
+          renderRequests();
+        }
+      });
+    });
+
+    document.getElementById('profileToggle').addEventListener('click', () => toggleProfilePanel(true));
+    document.getElementById('closeProfilePanel').addEventListener('click', () => toggleProfilePanel(false));
+    profileOverlay.addEventListener('click', () => toggleProfilePanel(false));
+
+    editProfileBtn.addEventListener('click', () => setProfileEditing(true));
+    discardProfileBtn.addEventListener('click', () => {
+      populateProfileForm(state.user);
+      setProfileEditing(false);
+    });
+
+    profileForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData(profileForm);
+      const payload = {};
+      formData.forEach((value, key) => {
+        if (value !== null) payload[key] = value;
+      });
+      try {
+        saveProfileBtn.textContent = 'Saving...';
+        saveProfileBtn.disabled = true;
+        const response = await updateProfile(payload, token);
+        alert(response.message || 'Profile updated successfully.');
+        await loadUserProfile();
+        setProfileEditing(false);
+      } catch (error) {
+        alert('Failed to update profile: ' + error.message);
+      } finally {
+        saveProfileBtn.textContent = 'Save';
+      }
+    });
+
+    document.getElementById('closeDogModal').addEventListener('click', () => toggleModal(dogModal, false));
+    document.getElementById('closeFeedbackModal').addEventListener('click', () => toggleModal(feedbackModal, false));
+    document.getElementById('cancelFeedbackBtn').addEventListener('click', () => toggleModal(feedbackModal, false));
+    window.addEventListener('click', (event) => {
+      if (event.target === dogModal) toggleModal(dogModal, false);
+      if (event.target === feedbackModal) toggleModal(feedbackModal, false);
+    });
+
+    document.getElementById('feedbackForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!state.feedbackRequestId) return;
+      const formData = new FormData(event.target);
+      const payload = {
+        followup_date: formData.get('followup_date'),
+        notes: formData.get('notes'),
+        health_status: formData.get('health_status')
+      };
+      try {
+        const response = await apiFetch(
+          `/api/adoptions/request/${state.feedbackRequestId}/post-tracking`,
+          'POST',
+          payload,
+          token
+        );
+        alert(response.message || 'Feedback submitted. Thank you!');
+        toggleModal(feedbackModal, false);
+        event.target.reset();
+      } catch (error) {
+        alert('Unable to submit feedback: ' + error.message);
+      }
+    });
+
+    document.getElementById('requestAdoptBtn').addEventListener('click', async () => {
+      if (!state.selectedDog || !state.selectedDogCenter) return;
+      if (state.requestedDogIds.has(state.selectedDog.id)) {
+        alert('You have already submitted a request for this dog.');
+        return;
+      }
+      try {
+        const response = await apiFetch('/api/adoptions/request', 'POST', {
+          center_id: state.selectedDogCenter,
+          animal_mongo_id: state.selectedDog.id
+        }, token);
+        alert(response.message || 'Adoption request sent!');
+        toggleModal(dogModal, false);
+        await loadRequests();
+      } catch (error) {
+        alert('Unable to send adoption request: ' + error.message);
+      }
+    });
+
+    async function loadUserProfile() {
+      try {
+        const data = await getProfile(token);
+        if (!data?.user) throw new Error('Missing user details');
+        state.user = data.user;
+        updateHeader(state.user);
+        populateProfileForm(state.user);
+      } catch (error) {
+        alert('Unable to load profile: ' + error.message);
+      }
+    }
+
+    function updateHeader(user) {
+      welcomeNameEl.textContent = user.adopter?.full_name || user.username;
+      profileInitialsEl.textContent = (user.adopter?.full_name || user.username || 'A')
+        .split(' ')
+        .map(part => part[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+      profileEmailEl.textContent = user.email;
+    }
+
+    function populateProfileForm(user) {
+      const adopter = user.adopter || {};
+      const { elements } = profileForm;
+      elements.namedItem('full_name').value = adopter.full_name || '';
+      elements.namedItem('address').value = adopter.address || '';
+      elements.namedItem('phone_number').value = adopter.phone_number || '';
+      elements.namedItem('lifestyle').value = adopter.lifestyle || '';
+      elements.namedItem('home_environment').value = adopter.home_environment || '';
+      Array.from(profileForm.elements).forEach(el => {
+        if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+          el.disabled = true;
+        }
+      });
+      saveProfileBtn.disabled = true;
+      discardProfileBtn.disabled = true;
+    }
+
+    function setProfileEditing(isEditing) {
+      state.editingProfile = isEditing;
+      Array.from(profileForm.elements).forEach(el => {
+        if (el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+          el.disabled = !isEditing;
+        }
+      });
+      saveProfileBtn.disabled = !isEditing;
+      discardProfileBtn.disabled = !isEditing;
+    }
+
+    async function loadDogs() {
+      try {
+        const data = await apiFetch('/api/pets?species=dog&is_adopted=false', 'GET', null, token);
+        state.dogs = data.animals || [];
+        renderDogs();
+      } catch (error) {
+        alert('Unable to load dogs: ' + error.message);
+      }
+    }
+
+    async function loadRequests() {
+      try {
+        const data = await apiFetch('/api/adoptions/my', 'GET', null, token);
+        state.requests = data.requests || [];
+        state.requestedDogIds = new Set(state.requests.map(req => req.animal_mongo_id));
+        renderRequests();
+      } catch (error) {
+        alert('Unable to load requests: ' + error.message);
+      }
+    }
+
+    function renderDogs() {
+      dogsGrid.innerHTML = '';
+      if (!state.dogs.length) {
+        noDogs.classList.remove('hidden');
+        return;
+      }
+      noDogs.classList.add('hidden');
+      state.dogs.forEach(dog => {
+        const card = document.createElement('article');
+        card.className = 'dog-card';
+        card.innerHTML = `
+          <div class="dog-card__img" aria-hidden="true">
+            <span>${(dog.name || 'Dog')[0] || '🐾'}</span>
+          </div>
+          <div class="dog-card__body">
+            <div>
+              <h3>${dog.name}</h3>
+              <p>${dog.breed || 'Breed unknown'}</p>
+              <p class="muted">${dog.center_name || 'Unknown center'}</p>
+            </div>
+            <button class="primary-btn outline request-btn" data-dog="${dog.id}">Send Request</button>
+          </div>
+        `;
+        card.addEventListener('click', () => openDogModal(dog));
+        const requestBtn = card.querySelector('.request-btn');
+        if (state.requestedDogIds.has(dog.id)) {
+          requestBtn.textContent = 'Request Sent';
+          requestBtn.disabled = true;
+        }
+        requestBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          openDogModal(dog, { focusButton: true });
+        });
+        dogsGrid.appendChild(card);
+      });
+    }
+
+    function openDogModal(dog) {
+      state.selectedDog = dog;
+      state.selectedDogCenter = dog.center_id;
+      document.getElementById('modalDogName').textContent = dog.name;
+      document.getElementById('modalDogBreed').textContent = dog.breed || 'Breed unknown';
+      document.getElementById('modalDogAge').textContent = dog.age ? dog.age + ' months' : 'Unknown';
+      document.getElementById('modalDogGender').textContent = dog.gender || 'Unknown';
+      document.getElementById('modalDogCenter').textContent = dog.center_name || 'Unknown';
+      document.getElementById('modalDogDescription').textContent = dog.description || 'No description provided.';
+      document.getElementById('modalDogAvatar').textContent = (dog.name || 'Dog')[0] || '🐾';
+      toggleModal(dogModal, true);
+    }
+
+    function renderRequests() {
+      requestsContainer.innerHTML = '';
+      if (!state.requests.length) {
+        noRequests.classList.remove('hidden');
+        return;
+      }
+      noRequests.classList.add('hidden');
+
+      state.requests.forEach(request => {
+        const card = document.createElement('article');
+        card.className = 'request-card';
+        const statusInfo = formatRequestStatus(request);
+        const createdDate = formatDate(request.request_date);
+        card.innerHTML = `
+          <div class="request-card__header">
+            <div>
+              <h3>${request.animal_name || 'Dog'}</h3>
+              <p class="muted">${request.center_name || 'Adoption Center'}</p>
+            </div>
+            <span class="status-pill status-${statusInfo.className}">${statusInfo.label}</span>
+          </div>
+          <p class="muted">Created ${createdDate}</p>
+          <div class="request-card__actions">
+            <button class="ghost-btn delete-request" data-request="${request.request_id}" ${statusInfo.locked ? 'disabled' : ''}>
+              Delete Request
+            </button>
+            ${shouldShowFeedback(request)
+              ? `<button class="primary-btn light send-feedback" data-request="${request.request_id}" data-dog="${request.animal_name || 'Dog'}" data-approved="${request.approval_date || ''}">
+                  Send Feedback
+                </button>`
+              : ''
+            }
+          </div>
+        `;
+        requestsContainer.appendChild(card);
+      });
+
+      requestsContainer.querySelectorAll('.delete-request').forEach(btn => {
+        btn.addEventListener('click', async (event) => {
+          const requestId = event.currentTarget.dataset.request;
+          if (!confirm('Delete this request?')) return;
+          try {
+            await apiFetch(`/api/adoptions/request/${requestId}`, 'DELETE', null, token);
+            await loadRequests();
+          } catch (error) {
+            alert('Unable to delete request: ' + error.message);
+          }
+        });
+      });
+
+      requestsContainer.querySelectorAll('.send-feedback').forEach(btn => {
+        btn.addEventListener('click', (event) => {
+          const requestId = event.currentTarget.dataset.request;
+          const dogName = event.currentTarget.dataset.dog;
+          const approvalDate = event.currentTarget.dataset.approved;
+          const daysSinceApproval = approvalDate ? daysBetween(approvalDate, new Date().toISOString()) : null;
+          if (daysSinceApproval !== null && daysSinceApproval < 15) {
+            const proceed = confirm(
+              `It has been ${daysSinceApproval} day(s) since approval. Submit feedback early?`
+            );
+            if (!proceed) {
+              return;
+            }
+          }
+          openFeedbackModal(requestId, dogName);
+        });
+      });
+    }
+
+    function formatRequestStatus(request) {
+      switch (request.status) {
+        case 'approved':
+        case 'completed':
+          return { label: 'Approved', className: 'approved', locked: true };
+        case 'pending':
+          return { label: 'Sent', className: 'pending', locked: false };
+        case 'rejected':
+          return { label: 'Rejected', className: 'rejected', locked: true };
+        default:
+          return { label: 'In Process', className: 'progress', locked: false };
+      }
+    }
+
+    function shouldShowFeedback(request) {
+      if (!['approved', 'completed'].includes(request.status)) return false;
+      return true;
+    }
+
+    function openFeedbackModal(requestId, dogName) {
+      state.feedbackRequestId = requestId;
+      document.querySelector('#feedbackDogName').textContent = dogName;
+      const today = new Date().toISOString().split('T')[0];
+      document.querySelector('#feedbackForm [name="followup_date"]').value = today;
+      toggleModal(feedbackModal, true);
+    }
+
+    function toggleProfilePanel(open) {
+      profilePanel.classList.toggle('hidden', !open);
+      profileOverlay.classList.toggle('hidden', !open);
+      if (open) {
+        profilePanel.setAttribute('aria-hidden', 'false');
+      } else {
+        profilePanel.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function toggleModal(modalEl, open) {
+      modalEl.classList.toggle('hidden', !open);
+    }
+
+    function daysBetween(isoPast, isoNow) {
+      const past = new Date(isoPast);
+      const now = new Date(isoNow);
+      const diff = now - past;
+      return Math.floor(diff / (1000 * 60 * 60 * 24));
+    }
+
+    function formatDate(isoString) {
+      if (!isoString) return 'Unknown date';
+      return new Date(isoString).toLocaleDateString();
+    }
+
+    (async function init() {
+      await Promise.all([loadUserProfile(), loadDogs(), loadRequests()]);
+      renderDogs();
+      renderRequests();
+    })();
+  </script>
+</body>
+</html>

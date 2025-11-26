@@ -91,6 +91,14 @@ def serve_center_register():
 def serve_dashboard():
     return send_from_directory(str(FRONTEND_PAGES), 'dashboard.html')
 
+@app.route('/adopter-dashboard.html')
+def serve_adopter_dashboard():
+    return send_from_directory(str(FRONTEND_PAGES), 'adopter-dashboard.html')
+
+@app.route('/center-dashboard.html')
+def serve_center_dashboard():
+    return send_from_directory(str(FRONTEND_PAGES), 'center-dashboard.html')
+
 
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):

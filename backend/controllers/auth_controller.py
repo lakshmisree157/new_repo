@@ -140,6 +140,76 @@ def register_user(username, email, password, role, db_session=None, **kwargs):
             session.close()
 
 
+def update_adopter_profile(user_id, full_name=None, address=None, phone_number=None, lifestyle=None, home_environment=None):
+    session_created = False
+    if not user_id:
+        return {'error': 'User ID is required'}, 400
+
+    session = None
+    try:
+        session = Session()
+        user_id_int = int(user_id)
+        adopter = session.query(Adopter).filter(Adopter.user_id == user_id_int).first()
+        if not adopter:
+            return {'error': 'Adopter profile not found'}, 404
+
+        if full_name is not None:
+            adopter.full_name = full_name
+        if address is not None:
+            adopter.address = address
+        if phone_number is not None:
+            adopter.phone_number = phone_number
+        if lifestyle is not None:
+            adopter.lifestyle = lifestyle  # Assumes validated enum passed from route
+        if home_environment is not None:
+            adopter.home_environment = home_environment
+
+        session.add(adopter)
+        session.commit()
+
+        return {'message': 'Adopter profile updated successfully'}, 200
+    except Exception as e:
+        if session:
+            session.rollback()
+        return {'error': str(e)}, 500
+    finally:
+        if session:
+            session.close()
+
+
+def update_center_profile(user_id, center_name=None, location=None, contact_number=None):
+    session_created = False
+    if not user_id:
+        return {'error': 'User ID is required'}, 400
+
+    session = None
+    try:
+        session = Session()
+        user_id_int = int(user_id)
+        center = session.query(AdoptionCenter).filter(AdoptionCenter.user_id == user_id_int).first()
+        if not center:
+            return {'error': 'Center profile not found'}, 404
+
+        if center_name is not None:
+            center.center_name = center_name
+        if location is not None:
+            center.location = location
+        if contact_number is not None:
+            center.contact_number = contact_number
+
+        session.add(center)
+        session.commit()
+
+        return {'message': 'Center profile updated successfully'}, 200
+    except Exception as e:
+        if session:
+            session.rollback()
+        return {'error': str(e)}, 500
+    finally:
+        if session:
+            session.close()
+
+
 def login_user(email, password, db_session=None):
     """
     Authenticate user and return JWT token.

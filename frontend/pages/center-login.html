@@ -170,8 +170,9 @@
         </div>
     </div>
 
-    <script src="../assets/api.js"></script>
-    <script>
+    <script type="module">
+        import { login } from '../assets/api.js';
+
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -191,9 +192,13 @@
 
                 if (result.access_token) {
                     messageEl.className = 'message success';
-                    messageEl.textContent = '✓ Login successful! Redirecting to dashboard...';
+                    messageEl.textContent = '✓ Login successful! Redirecting...';
                     setTimeout(() => {
-                        window.location.href = '/dashboard';
+                        if (result.user && result.user.role === 'center') {
+                            window.location.href = '/center-dashboard.html';
+                        } else {
+                            window.location.href = '/dashboard';
+                        }
                     }, 2000);
                 } else {
                     messageEl.className = 'message error';

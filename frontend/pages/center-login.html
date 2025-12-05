@@ -194,12 +194,8 @@
                     messageEl.className = 'message success';
                     messageEl.textContent = '✓ Login successful! Redirecting...';
                     setTimeout(() => {
-                        if (result.user && result.user.role === 'center') {
-                            window.location.href = '/center-dashboard.html';
-                        } else {
-                            window.location.href = '/dashboard';
-                        }
-                    }, 2000);
+                        window.location.href = '/center-dashboard.html';
+                    }, 1200);
                 } else {
                     messageEl.className = 'message error';
                     messageEl.textContent = '✗ Error: ' + (result.error || 'Unknown error');

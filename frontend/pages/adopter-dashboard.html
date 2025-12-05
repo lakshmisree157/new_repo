@@ -23,6 +23,7 @@
   <nav class="dashboard-tabs">
     <button data-tab="availableDogsSection" class="active">Available Dogs</button>
     <button data-tab="myRequestsSection">My Requests</button>
+    <button data-tab="myFeedbackSection">My Feedback</button>
   </nav>
 
   <main class="dashboard-main">
@@ -46,6 +47,17 @@
       </div>
       <div id="requestsContainer"></div>
       <p id="noRequests" class="empty-state hidden">You have not sent any adoption requests yet.</p>
+    </section>
+
+    <section id="myFeedbackSection" class="tabContent hidden">
+      <div class="section-header">
+        <div>
+          <h2>My Feedback</h2>
+          <p>View your submitted post-adoption feedback.</p>
+        </div>
+      </div>
+      <div id="feedbackContainer"></div>
+      <p id="noFeedback" class="empty-state hidden">You have not submitted any feedback yet.</p>
     </section>
   </main>
 
@@ -159,6 +171,7 @@
       user: null,
       dogs: [],
       requests: [],
+      feedback: [],
       requestedDogIds: new Set(),
       selectedDog: null,
       selectedDogCenter: null,
@@ -179,6 +192,8 @@
     const noDogs = document.getElementById('noDogs');
     const requestsContainer = document.getElementById('requestsContainer');
     const noRequests = document.getElementById('noRequests');
+    const feedbackContainer = document.getElementById('feedbackContainer');
+    const noFeedback = document.getElementById('noFeedback');
     const dogModal = document.getElementById('dogDetailsModal');
     const feedbackModal = document.getElementById('feedbackModal');
 
@@ -195,8 +210,10 @@
         document.getElementById(btn.dataset.tab).classList.remove('hidden');
         if (btn.dataset.tab === 'availableDogsSection') {
           renderDogs();
-        } else {
+        } else if (btn.dataset.tab === 'myRequestsSection') {
           renderRequests();
+        } else if (btn.dataset.tab === 'myFeedbackSection') {
+          renderFeedback();
         }
       });
     });
@@ -355,6 +372,16 @@
       }
     }
 
+    async function loadFeedback() {
+      try {
+        const data = await apiFetch('/api/adoptions/my-feedback', 'GET', null, token);
+        state.feedback = data.feedback || [];
+        renderFeedback();
+      } catch (error) {
+        alert('Unable to load feedback: ' + error.message);
+      }
+    }
+
     function renderDogs() {
       dogsGrid.innerHTML = '';
       if (!state.dogs.length) {
@@ -375,17 +402,15 @@
               <p>${dog.breed || 'Breed unknown'}</p>
               <p class="muted">${dog.center_name || 'Unknown center'}</p>
             </div>
-            <button class="primary-btn outline request-btn" data-dog="${dog.id}">Send Request</button>
+            <button class="primary-btn outline view-btn" data-dog="${dog.id}">View Details</button>
           </div>
         `;
-        card.addEventListener('click', () => openDogModal(dog));
-        const requestBtn = card.querySelector('.request-btn');
+        const viewBtn = card.querySelector('.view-btn');
         if (state.requestedDogIds.has(dog.id)) {
-          requestBtn.textContent = 'Request Sent';
-          requestBtn.disabled = true;
+          viewBtn.textContent = 'Request Sent';
+          viewBtn.disabled = true;
         }
-        requestBtn.addEventListener('click', (event) => {
-          event.stopPropagation();
+        viewBtn.addEventListener('click', (event) => {
           openDogModal(dog, { focusButton: true });
         });
         dogsGrid.appendChild(card);
@@ -474,6 +499,36 @@
       });
     }
 
+    function renderFeedback() {
+      feedbackContainer.innerHTML = '';
+      if (!state.feedback.length) {
+        noFeedback.classList.remove('hidden');
+        return;
+      }
+      noFeedback.classList.add('hidden');
+
+      state.feedback.forEach(fb => {
+        const card = document.createElement('article');
+        card.className = 'feedback-card';
+        const followupDate = formatDate(fb.followup_date);
+        card.innerHTML = `
+          <div class="feedback-card__header">
+            <div>
+              <h3>${fb.animal_name || 'Dog'}</h3>
+              <p class="muted">${fb.center_name || 'Adoption Center'}</p>
+            </div>
+            <span class="status-pill status-completed">Submitted</span>
+          </div>
+          <p class="muted">Follow-up on ${followupDate}</p>
+          <div class="feedback-card__body">
+            <p><strong>Health Status:</strong> ${fb.health_status || 'Not specified'}</p>
+            <p><strong>Notes:</strong> ${fb.notes || 'No notes provided'}</p>
+          </div>
+        `;
+        feedbackContainer.appendChild(card);
+      });
+    }
+
     function formatRequestStatus(request) {
       switch (request.status) {
         case 'approved':
@@ -528,9 +583,10 @@
     }
 
     (async function init() {
-      await Promise.all([loadUserProfile(), loadDogs(), loadRequests()]);
+      await Promise.all([loadUserProfile(), loadDogs(), loadRequests(), loadFeedback()]);
       renderDogs();
       renderRequests();
+      renderFeedback();
     })();
   </script>
 </body>

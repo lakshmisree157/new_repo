@@ -210,8 +210,9 @@
         </div>
     </div>
 
-    <script src="../assets/api.js"></script>
-    <script>
+    <script type="module">
+        import { apiFetch } from '../assets/api.js';
+
         document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -238,19 +239,13 @@
             messageEl.className = 'message';
 
             try {
-                const result = await apiFetch('/api/auth/register', 'POST', payload);
-
-                if (result.status === 201) {
-                    messageEl.className = 'message success';
-                    messageEl.textContent = '✓ Account created successfully! Redirecting to login...';
-                    document.getElementById('registerForm').reset();
-                    setTimeout(() => {
-                        window.location.href = '/adopter-login';
-                    }, 2000);
-                } else {
-                    messageEl.className = 'message error';
-                    messageEl.textContent = '✗ Error: ' + (result.data.error || 'Unknown error');
-                }
+                await apiFetch('/api/auth/register', 'POST', payload);
+                messageEl.className = 'message success';
+                messageEl.textContent = '✓ Account created successfully! Redirecting to login...';
+                document.getElementById('registerForm').reset();
+                setTimeout(() => {
+                    window.location.href = '/adopter-login';
+                }, 2000);
             } catch (error) {
                 messageEl.className = 'message error';
                 messageEl.textContent = '✗ Error: ' + error.message;

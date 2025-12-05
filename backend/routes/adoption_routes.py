@@ -10,13 +10,23 @@ from backend.controllers.adoption_controller import (
     get_requests_by_center,
     get_requests_by_adopter,
     update_request_status,
-    add_post_adoption_tracking
+    add_post_adoption_tracking,
+    get_feedback_for_center,
+    get_feedback_for_adopter
 )
-from backend.models.sql_models import AdminLog
+from backend.models.sql_models import AdminLog, AdoptionCenter
 from config.py_db import engine
 from sqlalchemy.orm import sessionmaker
 
 Session = sessionmaker(bind=engine)
+def get_center_id_for_user(user_id):
+    session = Session()
+    try:
+        center = session.query(AdoptionCenter).filter(AdoptionCenter.user_id == user_id).first()
+        return center.center_id if center else None
+    finally:
+        session.close()
+
 
 adopt_bp = Blueprint('adoptions', __name__, url_prefix='/api/adoptions')
 
@@ -55,6 +65,16 @@ def create_request():
 @jwt_required()
 @role_required('center', 'admin')
 def center_requests(center_id):
+    claims = get_jwt()
+    if claims.get('role') == 'center':
+        try:
+            user_id = int(get_jwt_identity())
+        except (TypeError, ValueError):
+            return jsonify(error='Invalid user identity'), 400
+        actual_center_id = get_center_id_for_user(user_id)
+        if actual_center_id != center_id:
+            return jsonify(error='Forbidden: cannot access other centers'), 403
+
     result, status = get_requests_by_center(center_id)
     return jsonify(result), status
 
@@ -65,6 +85,15 @@ def center_requests(center_id):
 def my_requests():
     user_id = get_jwt_identity()
     result, status = get_requests_by_adopter(user_id)
+    return jsonify(result), status
+
+
+@adopt_bp.route('/my-feedback', methods=['GET'])
+@jwt_required()
+@role_required('adopter')
+def my_feedback():
+    user_id = get_jwt_identity()
+    result, status = get_feedback_for_adopter(user_id)
     return jsonify(result), status
 
 
@@ -125,6 +154,24 @@ def delete_request(request_id):
     from backend.controllers.adoption_controller import delete_adoption_request
     user_id = get_jwt_identity()
     result, status = delete_adoption_request(request_id, user_id)
+    return jsonify(result), status
+
+
+@adopt_bp.route('/center/<int:center_id>/feedback', methods=['GET'])
+@jwt_required()
+@role_required('center', 'admin')
+def center_feedback(center_id):
+    claims = get_jwt()
+    if claims.get('role') == 'center':
+        try:
+            user_id = int(get_jwt_identity())
+        except (TypeError, ValueError):
+            return jsonify(error='Invalid user identity'), 400
+        actual_center_id = get_center_id_for_user(user_id)
+        if actual_center_id != center_id:
+            return jsonify(error='Forbidden: cannot access other centers'), 403
+
+    result, status = get_feedback_for_center(center_id)
     return jsonify(result), status
 
 

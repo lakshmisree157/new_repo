@@ -16,11 +16,16 @@ from backend.controllers.pet_controller import (
     get_animal_by_id,
     add_vet_record,
     update_animal_adoption_status,
-    get_animals_by_center
+    get_animals_by_center,
+    update_animal_details
 )
+from backend.models.sql_models import AdoptionCenter
+from config.py_db import engine
+from sqlalchemy.orm import sessionmaker
 
 # Create blueprint
 pet_bp = Blueprint('pets', __name__, url_prefix='/api/pets')
+Session = sessionmaker(bind=engine)
 
 
 def role_required(*required_roles):
@@ -38,6 +43,16 @@ def role_required(*required_roles):
         wrapper.__name__ = fn.__name__
         return wrapper
     return decorator
+
+
+def get_center_id_for_user(user_id):
+    """Lookup center_id for the given center user."""
+    session = Session()
+    try:
+        center = session.query(AdoptionCenter).filter(AdoptionCenter.user_id == user_id).first()
+        return center.center_id if center else None
+    finally:
+        session.close()
 
 
 @pet_bp.route('', methods=['POST'])
@@ -183,6 +198,49 @@ def get_pet(animal_id):
     }
     """
     result, status_code = get_animal_by_id(animal_id)
+    return jsonify(result), status_code
+
+
+@pet_bp.route('/<animal_id>', methods=['PATCH'])
+@jwt_required()
+@role_required('center', 'admin')
+def edit_pet(animal_id):
+    """
+    PATCH /api/pets/<animal_id>
+    Update editable animal fields (center/admin only).
+    """
+    data = request.json or {}
+    editable = ['name', 'breed', 'age', 'gender', 'description', 'is_adopted']
+    updates = {}
+
+    for field in editable:
+        if field in data:
+            value = data.get(field)
+            if field == 'age' and value is not None:
+                try:
+                    value = int(value)
+                except (TypeError, ValueError):
+                    return jsonify(error='Age must be a number'), 400
+            if field == 'is_adopted' and value is not None:
+                value = bool(value)
+            updates[field] = value
+
+    if not updates:
+        return jsonify(error='No editable fields provided'), 400
+
+    allowed_center_id = None
+    claims = get_jwt()
+    if claims.get('role') == 'center':
+        try:
+            user_id = int(get_jwt_identity())
+        except (TypeError, ValueError):
+            return jsonify(error='Invalid user identity'), 400
+        center_id = get_center_id_for_user(user_id)
+        if center_id is None:
+            return jsonify(error='Center profile not found'), 404
+        allowed_center_id = center_id
+
+    result, status_code = update_animal_details(animal_id, allowed_center_id=allowed_center_id, **updates)
     return jsonify(result), status_code
 
 

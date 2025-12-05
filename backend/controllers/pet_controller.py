@@ -121,7 +121,7 @@ def get_animal_by_id(animal_id):
         return {'error': str(e)}, 500
 
 
-def add_vet_record(animal_id, file_url=None, summary=None, stats=None, temperament_score=None):
+def add_vet_record(animal_id, file_url=None, summary=None, stats=None, temperament_score=None, allowed_center_id=None):
     """
     Add a veterinary record to an animal.
     
@@ -139,7 +139,10 @@ def add_vet_record(animal_id, file_url=None, summary=None, stats=None, temperame
         animal = Animal.objects(id=animal_id).first()
         if not animal:
             return {'error': 'Animal not found'}, 404
-        
+
+        if allowed_center_id is not None and animal.center_id != allowed_center_id:
+            return {'error': 'Forbidden: cannot add vet record to another center\'s animal'}, 403
+
         vet_record = VetRecord(
             file_url=file_url,
             summary=summary,
@@ -205,10 +208,67 @@ def get_animals_by_center(center_id):
     """
     try:
         animals = Animal.objects(center_id=center_id).order_by('-created_at')
+
+        from backend.models.sql_models import AdoptionCenter
+        from config.py_db import engine
+        from sqlalchemy.orm import sessionmaker
+        Session = sessionmaker(bind=engine)
+        session = Session()
+
+        try:
+            center = session.query(AdoptionCenter).filter(AdoptionCenter.center_id == center_id).first()
+            center_name = center.center_name if center else 'Unknown Center'
+
+            animal_dicts = []
+            for a in animals:
+                animal_dict = a.to_dict()
+                animal_dict['center_name'] = center_name
+                animal_dicts.append(animal_dict)
+
+            return {
+                'center_id': center_id,
+                'total': animals.count(),
+                'animals': animal_dicts
+            }, 200
+        finally:
+            session.close()
+
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+
+def update_animal_details(animal_id, allowed_center_id=None, **updates):
+    """
+    Update editable fields for an animal.
+
+    Args:
+        animal_id: MongoDB ObjectId string
+        allowed_center_id: optional center_id that must match the animal
+        updates: key/value pairs for editable fields
+    """
+    try:
+        animal = Animal.objects(id=animal_id).first()
+        if not animal:
+            return {'error': 'Animal not found'}, 404
+
+        if allowed_center_id is not None and animal.center_id != allowed_center_id:
+            return {'error': 'Forbidden: cannot edit another center\'s animal'}, 403
+
+        editable_fields = {'name', 'breed', 'age', 'gender', 'description', 'is_adopted'}
+        changed = False
+        for field, value in updates.items():
+            if field in editable_fields and value is not None:
+                setattr(animal, field, value)
+                changed = True
+
+        if not changed:
+            return {'error': 'No valid fields provided to update'}, 400
+
+        animal.updated_at = datetime.utcnow()
+        animal.save()
         return {
-            'center_id': center_id,
-            'total': animals.count(),
-            'animals': [a.to_dict() for a in animals]
+            'message': 'Animal updated successfully',
+            'animal': animal.to_dict()
         }, 200
 
     except Exception as e:

@@ -9,7 +9,13 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from functools import wraps
 
-from backend.controllers.auth_controller import register_user, login_user, get_user_profile
+from backend.controllers.auth_controller import (
+    register_user,
+    login_user,
+    get_user_profile,
+    update_adopter_profile,
+    update_center_profile
+)
 
 # Create blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
@@ -132,17 +138,20 @@ def login():
     return jsonify(result), status_code
 
 
-@auth_bp.route('/profile', methods=['GET'])
+@auth_bp.route('/profile', methods=['GET', 'PATCH'])
 @jwt_required()
 def profile():
     """
     GET /api/auth/profile
     Get current user profile (protected - requires valid JWT token).
-    
+
+    PATCH /api/auth/profile
+    Update current user profile (protected - requires valid JWT token).
+
     Headers:
     Authorization: Bearer <access_token>
-    
-    Response: 200 OK
+
+    GET Response: 200 OK
     {
         "message": "Profile retrieved",
         "user": {
@@ -153,16 +162,49 @@ def profile():
             "created_at": "2025-11-14T10:30:00"
         }
     }
-    
+
+    PATCH Request body:
+    {
+        "full_name": "Updated Name",  // for adopters
+        "address": "New Address",     // for adopters
+        "phone_number": "123-456-7890", // for adopters
+        "lifestyle": "active",        // for adopters
+        "home_environment": "house",  // for adopters
+        "center_name": "New Center",  // for centers
+        "location": "New Location",   // for centers
+        "contact_number": "098-765-4321" // for centers
+    }
+
+    PATCH Response: 200 OK
+    {
+        "message": "Profile updated successfully"
+    }
+
     If role='center', also includes center data.
     If role='adopter', also includes adopter data.
     """
-    try:
+    if request.method == 'GET':
+        try:
+            user_id = get_jwt_identity()
+            result, status_code = get_user_profile(user_id=user_id)
+            return jsonify(result), status_code
+        except Exception as e:
+            return jsonify(error=str(e)), 500
+    elif request.method == 'PATCH':
+        data = request.json or {}
         user_id = get_jwt_identity()
-        result, status_code = get_user_profile(user_id=user_id)
-        return jsonify(result), status_code
-    except Exception as e:
-        return jsonify(error=str(e)), 500
+
+        claims = get_jwt()
+        role = claims.get('role')
+
+        if role == 'adopter':
+            result, status = update_adopter_profile(user_id, **data)
+        elif role == 'center':
+            result, status = update_center_profile(user_id, **data)
+        else:
+            return jsonify(error='Invalid role'), 400
+
+        return jsonify(result), status
 
 
 @auth_bp.route('/admin/only', methods=['GET'])

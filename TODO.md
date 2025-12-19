@@ -30,5 +30,10 @@
 ## 5. Update database schema
 - [x] Add compatibility_score column to post_adoption_tracking table
 
-## 6. Update TODO.md
+## 6. Integrate compatibility prediction into adoption request creation
+- [x] Modify create_adoption_request to calculate and store compatibility_score
+- [x] Update get_requests_by_center and get_requests_by_adopter to include compatibility_score in responses
+- [x] Update database schema and models for compatibility_score in adoption_requests
+
+## 7. Update TODO.md
 - [x] Mark completed tasks

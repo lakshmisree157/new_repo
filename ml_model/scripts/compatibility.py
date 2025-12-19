@@ -72,10 +72,28 @@ def predict_compatibility(adopter_data, pet_data):
     # Combine adopter and pet data
     combined_data = {**adopter_data, **pet_data}
 
+    # Handle null values by providing defaults
+    # Categorical defaults
+    for cat_feat in CATEGORICAL_FEATURES:
+        if combined_data.get(cat_feat) is None:
+            combined_data[cat_feat] = 'unknown'
+
+    # Numeric defaults
+    numeric_defaults = {
+        'preferred_pet_age_min': 0,
+        'preferred_pet_age_max': 20,  # Assume max age for pets
+        'age': 1,  # Default pet age
+        'activity_level': 2.5,  # Mid-range
+        'temperament_score': 0.5  # Neutral
+    }
+    for num_feat, default in numeric_defaults.items():
+        if combined_data.get(num_feat) is None:
+            combined_data[num_feat] = default
+
     # Create derived feature: age_match
-    pet_age = combined_data.get('age', 0)
-    min_age = combined_data.get('preferred_pet_age_min', 0)
-    max_age = combined_data.get('preferred_pet_age_max', 100)
+    pet_age = combined_data['age']
+    min_age = combined_data['preferred_pet_age_min']
+    max_age = combined_data['preferred_pet_age_max']
     age_match = 1 if min_age <= pet_age <= max_age else 0
     combined_data['age_match'] = age_match
 

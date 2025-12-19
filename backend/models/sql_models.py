@@ -2,7 +2,7 @@
 SQLAlchemy ORM models for MySQL tables.
 All column names and types match schema.sql exactly.
 """
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Text, Boolean, Date
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Text, Boolean, Date, DECIMAL
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -166,7 +166,7 @@ class AdoptionRequest(Base):
     status = Column(Enum(AdoptionStatusEnum), default=AdoptionStatusEnum.pending)  # pending, approved, rejected, completed
     request_date = Column(DateTime, default=datetime.utcnow)
     approval_date = Column(DateTime, nullable=True)
-    compatibility_score = Column(Integer, default=0)  # Compatibility score
+    compatibility_score = Column(DECIMAL(5,2), default=0.0)  # Compatibility score
     adoption_outcome = Column(Enum(AdoptionOutcomeEnum), nullable=True)  # successful, returned, cancelled
 
     # Relationships

@@ -56,11 +56,45 @@ def create_adoption_request(adopter_user_id, center_id, animal_mongo_id, db_sess
         if existing_request:
             return {'error': 'You have already submitted a request for this animal'}, 409
 
+        # Calculate compatibility score
+        from ml_model.scripts.compatibility import predict_compatibility
+        from database.mongodb.models.animal import Animal
+
+        # Fetch pet data from MongoDB
+        animal = Animal.objects(id=str(animal_mongo_id)).first()
+        if not animal:
+            return {'error': 'Animal not found'}, 404
+
+        # Get latest vet record
+        latest_vet = max(animal.vet_records, key=lambda v: v.last_updated) if animal.vet_records else None
+
+        adopter_data = {
+            'lifestyle': adopter.lifestyle.value if adopter.lifestyle else None,
+            'home_environment': adopter.home_environment.value if adopter.home_environment else None,
+            'family_composition': adopter.family_composition.value if adopter.family_composition else None,
+            'pet_experience': adopter.pet_experience.value if adopter.pet_experience else None,
+            'preferred_pet_age_min': adopter.preferred_pet_age_min,
+            'preferred_pet_age_max': adopter.preferred_pet_age_max
+        }
+
+        pet_data = {
+            'species': animal.species,
+            'breed': animal.breed or '',
+            'age': animal.age,
+            'activity_level': latest_vet.stats.get('activity_level', 0) if latest_vet else 0,
+            'temperament_score': latest_vet.temperament_score if latest_vet else 0.5
+        }
+
+        # Predict compatibility
+        result = predict_compatibility(adopter_data, pet_data)
+        compatibility_score = result['compatibility_score']
+
         req = AdoptionRequest(
             adopter_id=adopter.adopter_id,
             center_id=center_id,
             animal_mongo_id=str(animal_mongo_id),
-            status=AdoptionStatusEnum.pending
+            status=AdoptionStatusEnum.pending,
+            compatibility_score=compatibility_score
         )
         session.add(req)
         session.commit()
@@ -113,7 +147,8 @@ def get_requests_by_center(center_id, db_session=None):
                 'animal_name': animal_name,
                 'status': r.status.value if r.status else None,
                 'request_date': r.request_date.isoformat() if r.request_date else None,
-                'approval_date': r.approval_date.isoformat() if r.approval_date else None
+                'approval_date': r.approval_date.isoformat() if r.approval_date else None,
+                'compatibility_score': float(r.compatibility_score) if r.compatibility_score else None
             })
         return {'total': len(data), 'requests': data}, 200
 
@@ -178,7 +213,8 @@ def get_requests_by_adopter(adopter_user_id, db_session=None):
                 'animal_name': animal_name,
                 'status': r.status.value if r.status else None,
                 'request_date': r.request_date.isoformat() if r.request_date else None,
-                'approval_date': r.approval_date.isoformat() if r.approval_date else None
+                'approval_date': r.approval_date.isoformat() if r.approval_date else None,
+                'compatibility_score': float(r.compatibility_score) if r.compatibility_score else None
             })
         return {'total': len(data), 'requests': data}, 200
 

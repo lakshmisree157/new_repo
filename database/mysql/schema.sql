@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS adoption_requests (
     status ENUM('pending', 'approved', 'rejected', 'completed') DEFAULT 'pending',
     request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     approval_date TIMESTAMP NULL,
+    compatibility_score DECIMAL(5,2),
     FOREIGN KEY (adopter_id) REFERENCES adopters(adopter_id) ON DELETE CASCADE,
     FOREIGN KEY (center_id) REFERENCES adoption_centers(center_id) ON DELETE CASCADE,
     INDEX idx_adopter_id (adopter_id),

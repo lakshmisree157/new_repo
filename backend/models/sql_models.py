@@ -47,6 +47,35 @@ class AdoptionStatusEnum(enum.Enum):
     completed = 'completed'
 
 
+class CenterStatusEnum(enum.Enum):
+    """Enum for adoption center status"""
+    pending = 'pending'
+    approved = 'approved'
+    rejected = 'rejected'
+
+
+class AdoptionOutcomeEnum(enum.Enum):
+    """Enum for adoption outcome"""
+    successful = 'successful'
+    returned = 'returned'
+    cancelled = 'cancelled'
+
+
+class PetExperienceEnum(enum.Enum):
+    """Enum for pet experience level"""
+    beginner = 'beginner'
+    intermediate = 'intermediate'
+    expert = 'expert'
+
+
+class FamilyCompositionEnum(enum.Enum):
+    """Enum for family composition"""
+    alone = 'alone'
+    with_family = 'with family'
+    with_children = 'with children'
+    with_other_pets = 'with other pets'
+
+
 class User(Base):
     """
     User table: user_id, username, email, password_hash, role, created_at
@@ -62,7 +91,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    adoption_center = relationship('AdoptionCenter', back_populates='user', uselist=False)
+    adoption_center = relationship('AdoptionCenter', back_populates='user', uselist=False, foreign_keys='AdoptionCenter.user_id')
     adopter = relationship('Adopter', back_populates='user', uselist=False)
     admin_logs = relationship('AdminLog', back_populates='admin')
 
@@ -72,7 +101,7 @@ class User(Base):
 
 class AdoptionCenter(Base):
     """
-    Adoption centers table: center_id, user_id, center_name, location, contact_number, created_at
+    Adoption centers table: center_id, user_id, center_name, location, contact_number, created_at, status, reviewed_by, reviewed_at
     Matches schema.sql columns exactly
     """
     __tablename__ = 'adoption_centers'
@@ -83,18 +112,22 @@ class AdoptionCenter(Base):
     location = Column(String(150))
     contact_number = Column(String(15))
     created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(Enum(CenterStatusEnum), default=CenterStatusEnum.pending)  # pending, approved, rejected
+    reviewed_by = Column(Integer, ForeignKey('users.user_id'), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
 
     # Relationships
-    user = relationship('User', back_populates='adoption_center')
+    user = relationship('User', back_populates='adoption_center', foreign_keys=[user_id])
     adoption_requests = relationship('AdoptionRequest', back_populates='center')
+    reviewer = relationship('User', foreign_keys=[reviewed_by])
 
     def __repr__(self):
-        return f'<AdoptionCenter {self.center_name}>'
+        return f'<AdoptionCenter {self.center_name} - {self.status.value}>'
 
 
 class Adopter(Base):
     """
-    Adopters table: adopter_id, user_id, full_name, address, phone_number, lifestyle, home_environment
+    Adopters table: adopter_id, user_id, full_name, address, phone_number, lifestyle, home_environment, family_composition, pet_experience, preferred_pet_age_min, preferred_pet_age_max
     Matches schema.sql columns exactly
     """
     __tablename__ = 'adopters'
@@ -106,6 +139,10 @@ class Adopter(Base):
     phone_number = Column(String(15))
     lifestyle = Column(Enum(LifestyleEnum))  # active, moderate, quiet
     home_environment = Column(Enum(HomeEnvironmentEnum))  # apartment, house, farm
+    family_composition = Column(Enum(FamilyCompositionEnum))  # alone, with family, with children, with other pets
+    pet_experience = Column(Enum(PetExperienceEnum), default=PetExperienceEnum.beginner)  # beginner, intermediate, expert
+    preferred_pet_age_min = Column(Integer)
+    preferred_pet_age_max = Column(Integer)
 
     # Relationships
     user = relationship('User', back_populates='adopter')
@@ -117,7 +154,7 @@ class Adopter(Base):
 
 class AdoptionRequest(Base):
     """
-    Adoption requests table: request_id, adopter_id, center_id, animal_mongo_id, status, request_date, approval_date
+    Adoption requests table: request_id, adopter_id, center_id, animal_mongo_id, status, request_date, approval_date, compatibility_score, adoption_outcome
     Matches schema.sql columns exactly
     """
     __tablename__ = 'adoption_requests'
@@ -129,6 +166,8 @@ class AdoptionRequest(Base):
     status = Column(Enum(AdoptionStatusEnum), default=AdoptionStatusEnum.pending)  # pending, approved, rejected, completed
     request_date = Column(DateTime, default=datetime.utcnow)
     approval_date = Column(DateTime, nullable=True)
+    compatibility_score = Column(Integer, default=0)  # Compatibility score
+    adoption_outcome = Column(Enum(AdoptionOutcomeEnum), nullable=True)  # successful, returned, cancelled
 
     # Relationships
     adopter = relationship('Adopter', back_populates='adoption_requests')

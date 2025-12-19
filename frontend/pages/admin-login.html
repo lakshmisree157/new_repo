@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adopter Login - Pet Adoption System</title>
+    <title>Admin Login - Pet Adoption System</title>
     <style>
         * {
             margin: 0;
@@ -145,8 +145,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>🐾 Adopter Login</h1>
-        <p class="subtitle">Find your perfect pet companion</p>
+        <h1>👑 Admin Login</h1>
+        <p class="subtitle">Access the admin dashboard</p>
 
         <div id="message" class="message"></div>
 
@@ -161,11 +161,11 @@
                 <input type="password" id="password" name="password" required>
             </div>
 
-            <button type="submit" id="submitBtn">Login as Adopter</button>
+            <button type="submit" id="submitBtn">Login as Admin</button>
         </form>
 
         <div class="link">
-            Don't have an account? <a href="/adopter-register">Register as Adopter</a><br>
+            Don't have an account? <a href="/admin-register">Register as Admin</a><br>
             <a href="/">← Back to Home</a>
         </div>
     </div>
@@ -190,12 +190,12 @@
             try {
                 const result = await login(email, password);
 
-                if (result.access_token && result.user && result.user.role === 'adopter') {
+                if (result.access_token && result.user && result.user.role === 'admin') {
                     messageEl.className = 'message success';
                     messageEl.textContent = '✓ Login successful! Redirecting...';
                     setTimeout(() => {
-                        window.location.href = '/adopter-dashboard.html';
-                    }, 2000);
+                        window.location.href = '/admin-dashboard.html';
+                    }, 1200);
                 } else {
                     messageEl.className = 'message error';
                     messageEl.textContent = '✗ Login failed';

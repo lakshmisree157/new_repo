@@ -43,6 +43,11 @@ CREATE TABLE IF NOT EXISTS adopters (
     phone_number VARCHAR(15),
     lifestyle ENUM('active', 'moderate', 'quiet'),
     home_environment ENUM('apartment', 'house', 'farm'),
+    family_composition ENUM('alone', 'with family', 'with children', 'with other pets'),
+    pet_experience ENUM('beginner', 'intermediate', 'expert') DEFAULT 'beginner',
+
+    preferred_pet_age_min INT,
+    preferred_pet_age_max INT,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

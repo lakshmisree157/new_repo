@@ -87,9 +87,6 @@ def serve_center_register():
     return send_from_directory(str(FRONTEND_PAGES), 'center-register.html')
 
 
-@app.route('/dashboard')
-def serve_dashboard():
-    return send_from_directory(str(FRONTEND_PAGES), 'dashboard.html')
 
 @app.route('/adopter-dashboard.html')
 def serve_adopter_dashboard():
@@ -98,6 +95,21 @@ def serve_adopter_dashboard():
 @app.route('/center-dashboard.html')
 def serve_center_dashboard():
     return send_from_directory(str(FRONTEND_PAGES), 'center-dashboard.html')
+
+
+@app.route('/admin-login')
+def serve_admin_login():
+    return send_from_directory(str(FRONTEND_PAGES), 'admin-login.html')
+
+
+@app.route('/admin-register')
+def serve_admin_register():
+    return send_from_directory(str(FRONTEND_PAGES), 'admin-register.html')
+
+
+@app.route('/admin-dashboard.html')
+def serve_admin_dashboard():
+    return send_from_directory(str(FRONTEND_PAGES), 'admin-dashboard.html')
 
 
 @app.route('/assets/<path:filename>')

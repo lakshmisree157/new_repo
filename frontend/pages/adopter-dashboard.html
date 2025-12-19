@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Adopter Dashboard</title>
   <link rel="stylesheet" href="../assets/styles.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
   <header class="dashboard-header">
@@ -110,7 +111,7 @@
   <div id="profileOverlay" class="panel-overlay hidden"></div>
 
   <div id="dogDetailsModal" class="modal hidden" role="dialog" aria-modal="true">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 600px;">
       <button class="modal-close" id="closeDogModal" aria-label="Close dog details">&times;</button>
       <div class="modal-hero">
         <div class="avatar-lg" id="modalDogAvatar">🐾</div>
@@ -125,6 +126,13 @@
         <li><strong>Center:</strong> <span id="modalDogCenter"></span></li>
       </ul>
       <p id="modalDogDescription" class="modal-description"></p>
+
+      <h4>Veterinary Records</h4>
+      <div id="vetRecordsContainer">
+        <p id="noVetRecords">No veterinary records available.</p>
+        <div id="vetRecordsList"></div>
+      </div>
+
       <button id="requestAdoptBtn" class="primary-btn full-width">Send Request</button>
     </div>
   </div>
@@ -417,7 +425,7 @@
       });
     }
 
-    function openDogModal(dog) {
+    async function openDogModal(dog) {
       state.selectedDog = dog;
       state.selectedDogCenter = dog.center_id;
       document.getElementById('modalDogName').textContent = dog.name;
@@ -427,7 +435,46 @@
       document.getElementById('modalDogCenter').textContent = dog.center_name || 'Unknown';
       document.getElementById('modalDogDescription').textContent = dog.description || 'No description provided.';
       document.getElementById('modalDogAvatar').textContent = (dog.name || 'Dog')[0] || '🐾';
+
+      // Fetch full animal details including vet records
+      try {
+        const animalData = await apiFetch(`/api/pets/${dog.id}`, 'GET', null, token);
+        const vetRecords = animalData.animal.vet_records || [];
+        renderVetRecords(vetRecords);
+      } catch (error) {
+        console.error('Failed to load vet records:', error);
+        renderVetRecords([]);
+      }
+
       toggleModal(dogModal, true);
+    }
+
+    function renderVetRecords(vetRecords) {
+      const container = document.getElementById('vetRecordsContainer');
+      const noRecords = document.getElementById('noVetRecords');
+      const recordsList = document.getElementById('vetRecordsList');
+
+      if (!container || !noRecords || !recordsList) {
+        console.error('Vet records elements not found in DOM');
+        return;
+      }
+
+      if (!vetRecords || vetRecords.length === 0) {
+        noRecords.style.display = 'block';
+        recordsList.innerHTML = '';
+        return;
+      }
+
+      noRecords.style.display = 'none';
+      recordsList.innerHTML = vetRecords.map(record => `
+        <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px;">
+          <p><strong>File URL:</strong> <a href="${record.file_url || '#'}" target="_blank">${record.file_url || 'N/A'}</a></p>
+          <p><strong>Summary:</strong> ${record.summary || 'N/A'}</p>
+          <p><strong>Stats:</strong> ${record.stats ? JSON.stringify(record.stats, null, 2) : 'N/A'}</p>
+          <p><strong>Temperament Score:</strong> ${record.temperament_score || 'N/A'}</p>
+          <p><strong>Last Updated:</strong> ${record.last_updated ? new Date(record.last_updated).toLocaleDateString() : 'N/A'}</p>
+        </div>
+      `).join('');
     }
 
     function renderRequests() {
@@ -582,12 +629,36 @@
       return new Date(isoString).toLocaleDateString();
     }
 
+    // Polling for real-time updates
+    let pollingInterval;
+
+    function startPolling() {
+      pollingInterval = setInterval(async () => {
+        try {
+          await loadRequests();
+          await loadFeedback();
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      }, 30000); // Poll every 30 seconds
+    }
+
+    function stopPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    }
+
     (async function init() {
       await Promise.all([loadUserProfile(), loadDogs(), loadRequests(), loadFeedback()]);
       renderDogs();
       renderRequests();
       renderFeedback();
+      startPolling(); // Start polling for updates
     })();
+
+    // Stop polling when page is unloaded
+    window.addEventListener('beforeunload', stopPolling);
   </script>
 </body>
 </html>

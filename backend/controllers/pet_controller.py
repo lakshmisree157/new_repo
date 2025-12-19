@@ -254,6 +254,10 @@ def update_animal_details(animal_id, allowed_center_id=None, **updates):
         if allowed_center_id is not None and animal.center_id != allowed_center_id:
             return {'error': 'Forbidden: cannot edit another center\'s animal'}, 403
 
+        # Prevent editing if the animal is adopted
+        if animal.is_adopted:
+            return {'error': 'Cannot edit details of an adopted animal'}, 403
+
         editable_fields = {'name', 'breed', 'age', 'gender', 'description', 'is_adopted'}
         changed = False
         for field, value in updates.items():

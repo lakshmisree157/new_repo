@@ -1,6 +1,6 @@
 <!-- New reusable dog details modal component -->
 <div id="dogDetailsModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); justify-content:center; align-items:center;">
-  <div class="modal-content" style="background:#fff; padding:20px; border-radius:5px; max-width:400px; width:90%;">
+  <div class="modal-content" style="background:#fff; padding:20px; border-radius:5px; max-width:600px; width:90%;">
     <span id="closeModal" style="float:right; cursor:pointer; font-size:20px;">&times;</span>
     <h3 id="modalDogName"></h3>
     <p><strong>Breed: </strong><span id="modalDogBreed"></span></p>
@@ -8,6 +8,13 @@
     <p><strong>Gender: </strong><span id="modalDogGender"></span></p>
     <p><strong>Description: </strong><span id="modalDogDescription"></span></p>
     <p><strong>Center: </strong><span id="modalDogCenter"></span></p>
+
+    <h4>Veterinary Records</h4>
+    <div id="vetRecordsContainer">
+      <p id="noVetRecords">No veterinary records available.</p>
+      <div id="vetRecordsList"></div>
+    </div>
+
     <button id="requestAdoptBtn">Request to Adopt</button>
   </div>
 </div>

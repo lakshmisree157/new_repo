@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Adoption Center Dashboard</title>
   <link rel="stylesheet" href="../assets/styles.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
   <header class="dashboard-header">
@@ -13,6 +14,7 @@
       <h1>Welcome, <span id="centerNameHeading">Center</span></h1>
     </div>
     <div class="header-actions">
+      <a href="/adopter-login.html" class="ghost-btn">Adopter Login</a>
       <button id="logoutBtn" class="ghost-btn">Logout</button>
       <button id="profileToggle" class="profile-icon" aria-label="Open profile panel">
         <span id="centerInitials">C</span>
@@ -172,6 +174,31 @@
     </div>
   </div>
 
+  <div id="dogDetailsModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-content" style="max-width: 600px;">
+      <button class="modal-close" id="closeDogModal" aria-label="Close dog details">&times;</button>
+      <div class="modal-hero">
+        <div class="avatar-lg" id="modalDogAvatar">🐾</div>
+        <div>
+          <h3 id="modalDogName"></h3>
+          <p id="modalDogBreed" class="muted"></p>
+        </div>
+      </div>
+      <ul class="modal-details">
+        <li><strong>Age:</strong> <span id="modalDogAge"></span></li>
+        <li><strong>Gender:</strong> <span id="modalDogGender"></span></li>
+        <li><strong>Center:</strong> <span id="modalDogCenter"></span></li>
+      </ul>
+      <p id="modalDogDescription" class="modal-description"></p>
+
+      <h4>Veterinary Records</h4>
+      <div id="vetRecordsContainer">
+        <p id="noVetRecords">No veterinary records available.</p>
+        <div id="vetRecordsList"></div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { apiFetch, getProfile, updateProfile } from '../assets/api.js';
 
@@ -257,6 +284,8 @@
         toggleModal(target, false);
       });
     });
+
+    document.getElementById('closeDogModal').addEventListener('click', () => toggleModal('dogDetailsModal', false));
 
     document.getElementById('addDogForm').addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -405,13 +434,17 @@
           </div>
           <p class="muted">Added ${formatDate(dog.created_at)}</p>
           <div class="request-card__actions">
-            <button class="ghost-btn edit-dog" data-dog="${dog.id}">Edit Dog</button>
-            <button class="primary-btn light add-vet" data-dog="${dog.id}">Add Veterinary Records</button>
+            <button class="primary-btn outline view-dog-details" data-dog="' + dog.id + '">View Details</button>
+            ${dog.is_adopted ? '' : '<button class="ghost-btn edit-dog" data-dog="' + dog.id + '">Edit Dog</button>'}
+            ${dog.is_adopted ? '' : '<button class="primary-btn light add-vet" data-dog="' + dog.id + '">Add Veterinary Records</button>'}
           </div>
         `;
         dogsGrid.appendChild(card);
       });
 
+      dogsGrid.querySelectorAll('.view-dog-details').forEach(btn => {
+        btn.addEventListener('click', () => openDogDetailsModal(btn.dataset.dog));
+      });
       dogsGrid.querySelectorAll('.edit-dog').forEach(btn => {
         btn.addEventListener('click', () => openEditDogModal(btn.dataset.dog));
       });
@@ -420,46 +453,107 @@
       });
     }
 
-    function renderRequests() {
-      requestsGrid.innerHTML = '';
-      if (!state.requests.length) {
-        noRequests.classList.remove('hidden');
-        return;
-      }
-      noRequests.classList.add('hidden');
-      state.requests.forEach(req => {
-        const card = document.createElement('article');
-        card.className = 'request-card';
-        const statusClass = mapStatusClass(req.status);
-        const statusLabel = formatStatusLabel(req.status);
-        const disableAccept = ['approved', 'completed'].includes(req.status);
-        const disableReject = ['rejected', 'completed'].includes(req.status);
-        card.innerHTML = `
-          <div class="request-card__header">
-            <div>
-              <h3>${req.animal_name || 'Dog'}</h3>
-              <p class="muted">Adopter: ${req.adopter_name || req.adopter_id}</p>
-            </div>
-            <span class="status-pill status-${statusClass}">
-              ${statusLabel}
-            </span>
-          </div>
-          <p class="muted">Requested ${formatDate(req.request_date)}</p>
-          <div class="request-card__actions">
-            <button class="primary-btn accept-request" data-request="${req.request_id}" ${disableAccept ? 'disabled' : ''}>Accept</button>
-            <button class="ghost-btn reject-request" data-request="${req.request_id}" ${disableReject ? 'disabled' : ''}>Reject</button>
-          </div>
-        `;
-        requestsGrid.appendChild(card);
-      });
+  function renderRequests() {
+  requestsGrid.innerHTML = '';
 
-      requestsGrid.querySelectorAll('.accept-request').forEach(btn => {
-        btn.addEventListener('click', () => updateRequestStatus(btn.dataset.request, 'approved'));
-      });
-      requestsGrid.querySelectorAll('.reject-request').forEach(btn => {
-        btn.addEventListener('click', () => updateRequestStatus(btn.dataset.request, 'rejected'));
-      });
-    }
+  if (!state.requests.length) {
+    noRequests.classList.remove('hidden');
+    return;
+  }
+
+  noRequests.classList.add('hidden');
+
+  state.requests.forEach(req => {
+    const card = document.createElement('article');
+    card.className = 'request-card';
+
+    const statusClass = mapStatusClass(req.status);
+    const statusLabel = formatStatusLabel(req.status);
+
+    // Disable logic (single source)
+    const disableActions = ['approved', 'rejected', 'completed'].includes(req.status);
+
+    card.innerHTML = `
+      <div class="request-card__header">
+        <div>
+          <h3>${req.animal_name || 'Dog'}</h3>
+          <p class="muted">Adopter: ${req.adopter_name || req.adopter_id}</p>
+        </div>
+        <span class="status-pill status-${statusClass}">
+          ${statusLabel}
+        </span>
+      </div>
+
+      <p class="muted">Requested ${formatDate(req.request_date)}</p>
+
+      <div class="request-card__actions">
+        <button
+          class="primary-btn accept-request"
+          data-request="${req.request_id}"
+          ${disableActions ? 'disabled' : ''}>
+          Accept
+        </button>
+
+        <button
+          class="ghost-btn reject-request"
+          data-request="${req.request_id}"
+          ${disableActions ? 'disabled' : ''}>
+          Reject
+        </button>
+      </div>
+    `;
+
+    requestsGrid.appendChild(card);
+  });
+
+  // ACCEPT HANDLER
+  requestsGrid.querySelectorAll('.accept-request').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const requestId = btn.dataset.request;
+      const req = state.requests.find(r => r.request_id == requestId);
+
+      if (!req || req.status !== 'pending') return;
+
+      // Immediate UI lock
+      btn.disabled = true;
+      btn.closest('.request-card')
+        .querySelector('.reject-request').disabled = true;
+
+      try {
+        await updateRequestStatus(requestId, 'approved');
+        req.status = 'approved';
+        renderRequests();
+      } catch (err) {
+        console.error(err);
+        renderRequests(); // rollback UI
+      }
+    });
+  });
+
+  // REJECT HANDLER
+  requestsGrid.querySelectorAll('.reject-request').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const requestId = btn.dataset.request;
+      const req = state.requests.find(r => r.request_id == requestId);
+
+      if (!req || req.status !== 'pending') return;
+
+      // Immediate UI lock
+      btn.disabled = true;
+      btn.closest('.request-card')
+        .querySelector('.accept-request').disabled = true;
+
+      try {
+        await updateRequestStatus(requestId, 'rejected');
+        req.status = 'rejected';
+        renderRequests();
+      } catch (err) {
+        console.error(err);
+        renderRequests(); // rollback UI
+      }
+    });
+  });}
+
 
     function renderFeedback() {
       feedbackGrid.innerHTML = '';
@@ -490,6 +584,7 @@
       try {
         await apiFetch(`/api/adoptions/request/${requestId}/status`, 'PATCH', { status }, token);
         await loadRequests();
+        await loadDogs(); // Reload dogs to reflect adoption status changes
       } catch (error) {
         alert('Unable to update request: ' + error.message);
       }
@@ -558,6 +653,60 @@
       toggleModal('vetRecordModal', true);
     }
 
+    async function openDogDetailsModal(dogId) {
+      const dog = state.dogs.find(d => d.id === dogId);
+      if (!dog) return;
+
+      // Populate modal with dog details
+      document.getElementById('modalDogName').textContent = dog.name || 'Unknown';
+      document.getElementById('modalDogBreed').textContent = dog.breed || 'Breed unknown';
+      document.getElementById('modalDogAge').textContent = dog.age ? `${dog.age} months` : 'Unknown';
+      document.getElementById('modalDogGender').textContent = dog.gender ? dog.gender.charAt(0).toUpperCase() + dog.gender.slice(1) : 'Unknown';
+      document.getElementById('modalDogCenter').textContent = state.user?.center?.center_name || 'Unknown Center';
+      document.getElementById('modalDogDescription').textContent = dog.description || 'No description available.';
+
+      // Load veterinary records
+      try {
+        const vetData = await apiFetch(`/api/pets/${dogId}/vet-records`, 'GET', null, token);
+        const vetRecords = vetData.records || [];
+        renderVetRecords(vetRecords);
+      } catch (error) {
+        console.error('Unable to load vet records:', error);
+        document.getElementById('vetRecordsList').innerHTML = '<p>Unable to load veterinary records.</p>';
+      }
+
+      toggleModal('dogDetailsModal', true);
+    }
+
+    function renderVetRecords(records) {
+      const container = document.getElementById('vetRecordsContainer');
+      const list = document.getElementById('vetRecordsList');
+      const noRecords = document.getElementById('noVetRecords');
+
+      if (!records.length) {
+        noRecords.classList.remove('hidden');
+        list.innerHTML = '';
+        return;
+      }
+
+      noRecords.classList.add('hidden');
+      list.innerHTML = records.map(record => `
+        <div class="vet-record">
+          <h5>${formatDate(record.created_at)}</h5>
+          ${record.summary ? `<p><strong>Summary:</strong> ${record.summary}</p>` : ''}
+          ${record.file_url ? `<p><strong>File:</strong> <a href="${record.file_url}" target="_blank">View Document</a></p>` : ''}
+          ${record.stats ? `
+            <ul>
+              ${record.stats.weight ? `<li><strong>Weight:</strong> ${record.stats.weight} kg</li>` : ''}
+              ${record.stats.heart_rate ? `<li><strong>Heart Rate:</strong> ${record.stats.heart_rate} bpm</li>` : ''}
+              ${record.stats.activity_level ? `<li><strong>Activity Level:</strong> ${record.stats.activity_level}%</li>` : ''}
+            </ul>
+          ` : ''}
+          ${record.temperament_score ? `<p><strong>Temperament Score:</strong> ${record.temperament_score}/10</p>` : ''}
+        </div>
+      `).join('');
+    }
+
     function formatDate(isoString) {
       if (!isoString) return 'Unknown date';
       return new Date(isoString).toLocaleDateString();
@@ -582,10 +731,34 @@
       return status.charAt(0).toUpperCase() + status.slice(1);
     }
 
+    // Polling for real-time updates
+    let pollingInterval;
+
+    function startPolling() {
+      pollingInterval = setInterval(async () => {
+        try {
+          await loadRequests();
+          await loadFeedback();
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      }, 30000); // Poll every 30 seconds
+    }
+
+    function stopPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    }
+
     (async function init() {
       await loadUserProfile();
       await Promise.all([loadDogs(), loadRequests(), loadFeedback()]);
+      startPolling(); // Start polling for updates
     })();
+
+    // Stop polling when page is unloaded
+    window.addEventListener('beforeunload', stopPolling);
   </script>
 </body>
 </html>

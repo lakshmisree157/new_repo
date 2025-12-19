@@ -210,6 +210,12 @@ def update_request_status(request_id, new_status, db_session=None):
         req.status = AdoptionStatusEnum(new_status)
         if new_status == 'approved':
             req.approval_date = datetime.utcnow()
+            # Mark the animal as adopted in MongoDB
+            from backend.controllers.pet_controller import update_animal_adoption_status
+            update_result, update_status = update_animal_adoption_status(req.animal_mongo_id, True)
+            if update_status != 200:
+                # Log error but don't fail the request update
+                print(f"Warning: Failed to update animal adoption status: {update_result}")
         session.add(req)
         session.commit()
 

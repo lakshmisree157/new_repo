@@ -14,9 +14,11 @@ from backend.controllers.adoption_controller import (
     get_feedback_for_center,
     get_feedback_for_adopter
 )
-from backend.models.sql_models import AdminLog, AdoptionCenter
-from config.py_db import engine
+from backend.controllers.admin_controller import list_pending_centers, review_center
+from backend.models.sql_models import AdminLog, AdoptionCenter, Adopter
+from config.py_db import engine, mongo_db
 from sqlalchemy.orm import sessionmaker
+from ml_model.scripts.compatibility import predict_compatibility
 
 Session = sessionmaker(bind=engine)
 def get_center_id_for_user(user_id):
@@ -202,14 +204,91 @@ def admin_logs():
 @jwt_required()
 @role_required('admin')
 def get_pending_centers():
-    result, status = list_unverified_centers()
+    result, status = list_pending_centers()
     return jsonify(result), status
 
 
-@adopt_bp.route('/admin/verify-center/<int:center_id>', methods=['POST'])
+@adopt_bp.route('/admin/review-center/<int:center_id>', methods=['POST'])
 @jwt_required()
 @role_required('admin')
-def verify_adoption_center(center_id):
+def review_adoption_center(center_id):
+    data = request.json or {}
+    action = data.get('action')
+    if not action or action not in ['approve', 'reject']:
+        return jsonify(error='Missing or invalid action. Must be "approve" or "reject"'), 400
     admin_user_id = get_jwt_identity()
-    result, status = verify_center(center_id, admin_user_id)
+    result, status = review_center(center_id, admin_user_id, action)
     return jsonify(result), status
+
+
+@adopt_bp.route('/compatibility', methods=['POST'])
+@jwt_required()
+@role_required('adopter', 'center', 'admin')
+def predict_compatibility_route():
+    """
+    POST /api/adoptions/compatibility
+    Predict compatibility score between an adopter and a pet.
+
+    Body: {
+        "adopter_id": int,
+        "animal_mongo_id": str
+    }
+
+    Returns: {
+        "compatibility_score": float,
+        "match_label": "High" | "Medium" | "Low"
+    }
+    """
+    data = request.json or {}
+    adopter_id = data.get('adopter_id')
+    animal_mongo_id = data.get('animal_mongo_id')
+
+    if not adopter_id or not animal_mongo_id:
+        return jsonify(error='Missing adopter_id or animal_mongo_id'), 400
+
+    session = Session()
+    try:
+        # Fetch adopter data from MySQL
+        adopter = session.query(Adopter).filter(Adopter.adopter_id == adopter_id).first()
+        if not adopter:
+            return jsonify(error='Adopter not found'), 404
+
+        adopter_data = {
+            'lifestyle': adopter.lifestyle,
+            'home_environment': adopter.home_environment,
+            'family_composition': adopter.family_composition,
+            'pet_experience': adopter.pet_experience,
+            'preferred_pet_age_min': adopter.preferred_pet_age_min,
+            'preferred_pet_age_max': adopter.preferred_pet_age_max
+        }
+
+        # Fetch pet data from MongoDB
+        from database.mongodb.models.animal import Animal
+        try:
+            animal = Animal.objects(id=animal_mongo_id).first()
+            if not animal:
+                return jsonify(error='Animal not found'), 404
+
+            # Get latest vet record for temperament_score and activity_level
+            latest_vet = max(animal.vet_records, key=lambda v: v.last_updated) if animal.vet_records else None
+            pet_data = {
+                'species': animal.species,
+                'breed': animal.breed or '',
+                'age': animal.age,
+                'activity_level': latest_vet.stats.get('activity_level', 0) if latest_vet else 0,
+                'temperament_score': latest_vet.temperament_score if latest_vet else 0.5
+            }
+        except Exception as e:
+            return jsonify(error=f'MongoDB error: {str(e)}'), 500
+
+        # Predict compatibility
+        result = predict_compatibility(adopter_data, pet_data)
+
+        # Store compatibility_score in post_adoption_tracking if request exists
+        # For now, just return the result
+        return jsonify(result), 200
+
+    except Exception as e:
+        return jsonify(error=str(e)), 500
+    finally:
+        session.close()

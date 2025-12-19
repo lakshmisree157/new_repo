@@ -8,7 +8,7 @@ from flask_bcrypt import Bcrypt
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import or_
 
-from backend.models.sql_models import User, AdoptionCenter, Adopter, RoleEnum,LifestyleEnum, HomeEnvironmentEnum
+from backend.models.sql_models import User, AdoptionCenter, Adopter, RoleEnum, LifestyleEnum, HomeEnvironmentEnum, CenterStatusEnum, PetExperienceEnum, FamilyCompositionEnum
 from config.py_db import engine
 
 bcrypt = Bcrypt()
@@ -51,15 +51,25 @@ def register_user(username, email, password, role, db_session=None, **kwargs):
     # Validate adopter enums if provided
         lifestyle = kwargs.get('lifestyle')
         home_environment = kwargs.get('home_environment')
+        pet_experience = kwargs.get('pet_experience')
+        family_composition = kwargs.get('family_composition')
 
         allowed_lifestyles = [e.value for e in LifestyleEnum]
         allowed_envs = [e.value for e in HomeEnvironmentEnum]
+        allowed_pet_exp = [e.value for e in PetExperienceEnum]
+        allowed_families = [e.value for e in FamilyCompositionEnum]
 
         if lifestyle is not None and lifestyle not in allowed_lifestyles:
             return {'error': f"Invalid lifestyle. allowed: {allowed_lifestyles}"}, 400
 
         if home_environment is not None and home_environment not in allowed_envs:
             return {'error': f"Invalid home_environment. allowed: {allowed_envs}"}, 400
+
+        if pet_experience is not None and pet_experience not in allowed_pet_exp:
+            return {'error': f"Invalid pet_experience. allowed: {allowed_pet_exp}"}, 400
+
+        if family_composition is not None and family_composition not in allowed_families:
+            return {'error': f"Invalid family_composition. allowed: {allowed_families}"}, 400
         
         # Hash password using bcrypt
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
@@ -95,10 +105,16 @@ def register_user(username, email, password, role, db_session=None, **kwargs):
             phone_number = kwargs.get('phone_number', '')
             lifestyle_val = kwargs.get('lifestyle')
             home_environment_val = kwargs.get('home_environment')
+            family_composition_val = kwargs.get('family_composition')
+            pet_experience_val = kwargs.get('pet_experience')
+            preferred_pet_age_min_val = kwargs.get('preferred_pet_age_min')
+            preferred_pet_age_max_val = kwargs.get('preferred_pet_age_max')
 
             # convert to enum objects if provided
             lifestyle_enum = None
             home_env_enum = None
+            family_comp_enum = None
+            pet_exp_enum = None
             if lifestyle_val:
                 try:
                     lifestyle_enum = LifestyleEnum(lifestyle_val)
@@ -109,6 +125,16 @@ def register_user(username, email, password, role, db_session=None, **kwargs):
                     home_env_enum = HomeEnvironmentEnum(home_environment_val)
                 except Exception:
                     return {'error': f'Invalid home_environment. allowed: {[e.value for e in HomeEnvironmentEnum]}'}, 400
+            if family_composition_val:
+                try:
+                    family_comp_enum = FamilyCompositionEnum(family_composition_val)
+                except Exception:
+                    return {'error': f'Invalid family_composition. allowed: {[e.value for e in FamilyCompositionEnum]}'}, 400
+            if pet_experience_val:
+                try:
+                    pet_exp_enum = PetExperienceEnum(pet_experience_val)
+                except Exception:
+                    return {'error': f'Invalid pet_experience. allowed: {[e.value for e in PetExperienceEnum]}'}, 400
 
             new_adopter = Adopter(
                 user_id=new_user.user_id,
@@ -116,7 +142,11 @@ def register_user(username, email, password, role, db_session=None, **kwargs):
                 address=address,
                 phone_number=phone_number,
                 lifestyle=lifestyle_enum,
-                home_environment=home_env_enum
+                home_environment=home_env_enum,
+                family_composition=family_comp_enum,
+                pet_experience=pet_exp_enum,
+                preferred_pet_age_min=preferred_pet_age_min_val,
+                preferred_pet_age_max=preferred_pet_age_max_val
             )
             session.add(new_adopter)
         
@@ -140,7 +170,7 @@ def register_user(username, email, password, role, db_session=None, **kwargs):
             session.close()
 
 
-def update_adopter_profile(user_id, full_name=None, address=None, phone_number=None, lifestyle=None, home_environment=None):
+def update_adopter_profile(user_id, full_name=None, address=None, phone_number=None, lifestyle=None, home_environment=None, family_composition=None, pet_experience=None, allergies=None, preferred_pet_age_min=None, preferred_pet_age_max=None):
     session_created = False
     if not user_id:
         return {'error': 'User ID is required'}, 400
@@ -163,6 +193,14 @@ def update_adopter_profile(user_id, full_name=None, address=None, phone_number=N
             adopter.lifestyle = lifestyle  # Assumes validated enum passed from route
         if home_environment is not None:
             adopter.home_environment = home_environment
+        if family_composition is not None:
+            adopter.family_composition = family_composition
+        if pet_experience is not None:
+            adopter.pet_experience = pet_experience
+        if preferred_pet_age_min is not None:
+            adopter.preferred_pet_age_min = preferred_pet_age_min
+        if preferred_pet_age_max is not None:
+            adopter.preferred_pet_age_max = preferred_pet_age_max
 
         session.add(adopter)
         session.commit()
@@ -232,14 +270,20 @@ def login_user(email, password, db_session=None):
         # Find user by email
         user = session.query(User).filter(User.email == email).first()
 
-        
-        
         if not user:
             return {'error': 'Invalid email or password'}, 401
-        
+
         # Verify password against password_hash (matches schema)
         if not bcrypt.check_password_hash(user.password_hash, password):  # MATCHES SCHEMA COLUMN
             return {'error': 'Invalid email or password'}, 401
+
+        # Check if center is approved before allowing login
+        if user.role == RoleEnum.center:
+            center = session.query(AdoptionCenter).filter(AdoptionCenter.user_id == user.user_id).first()
+            if not center:
+                return {'error': 'Center profile not found'}, 401
+            if center.status != CenterStatusEnum.approved:
+                return {'error': 'Your center registration is still pending approval. Please wait for admin approval.'}, 403
         
         user_id_str = str(user.user_id)
         
@@ -316,7 +360,10 @@ def get_user_profile(user_id, db_session=None):
                     'center_id': center.center_id,
                     'center_name': center.center_name,  # MATCHES SCHEMA
                     'location': center.location,
-                    'contact_number': center.contact_number
+                    'contact_number': center.contact_number,
+                    'status': center.status.value if center.status else None,
+                    'reviewed_by': center.reviewed_by,
+                    'reviewed_at': center.reviewed_at.isoformat() if center.reviewed_at else None
                 }
         
         if user.role == RoleEnum.adopter:
@@ -328,7 +375,12 @@ def get_user_profile(user_id, db_session=None):
                     'address': adopter.address,
                     'phone_number': adopter.phone_number,
                     'lifestyle': adopter.lifestyle.value if adopter.lifestyle else None,
-                    'home_environment': adopter.home_environment.value if adopter.home_environment else None
+                    'home_environment': adopter.home_environment.value if adopter.home_environment else None,
+                    'family_composition': adopter.family_composition.value if adopter.family_composition else None,
+                    'pet_experience': adopter.pet_experience.value if adopter.pet_experience else None,
+
+                    'preferred_pet_age_min': adopter.preferred_pet_age_min,
+                    'preferred_pet_age_max': adopter.preferred_pet_age_max
                 }
         
         # if user.role == RoleEnum.center:

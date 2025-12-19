@@ -10,8 +10,10 @@ async function apiFetch(endpoint, method = 'GET', data = null, token = null) {
             'Content-Type': 'application/json',
         }
     };
-    if (token) {
-        options.headers['Authorization'] = 'Bearer ' + token;
+    // Use provided token or get from localStorage
+    const authToken = token || localStorage.getItem('access_token');
+    if (authToken) {
+        options.headers['Authorization'] = 'Bearer ' + authToken;
     }
     if (data) {
         options.body = JSON.stringify(data);

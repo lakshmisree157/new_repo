@@ -201,6 +201,39 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label for="family_composition">Family Composition</label>
+                <select id="family_composition" name="family_composition">
+                    <option value="">Select family composition</option>
+                    <option value="alone">Alone</option>
+                    <option value="with family">With family</option>
+                    <option value="with children">With children</option>
+                    <option value="with other pets">With other pets</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="pet_experience">Pet Experience</label>
+                <select id="pet_experience" name="pet_experience">
+                    <option value="">Select pet experience</option>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="expert">Expert</option>
+                </select>
+            </div>
+
+
+
+            <div class="form-group">
+                <label for="preferred_pet_age_min">Preferred Pet Age Min (months)</label>
+                <input type="number" id="preferred_pet_age_min" name="preferred_pet_age_min" min="0" placeholder="e.g., 3">
+            </div>
+
+            <div class="form-group">
+                <label for="preferred_pet_age_max">Preferred Pet Age Max (months)</label>
+                <input type="number" id="preferred_pet_age_max" name="preferred_pet_age_max" min="0" placeholder="e.g., 24">
+            </div>
+
             <button type="submit" id="submitBtn">Create Adopter Account</button>
         </form>
 
@@ -227,7 +260,12 @@
                 address: formData.get('address'),
                 phone_number: formData.get('phone_number'),
                 lifestyle: formData.get('lifestyle'),
-                home_environment: formData.get('home_environment')
+                home_environment: formData.get('home_environment'),
+                family_composition: formData.get('family_composition'),
+                pet_experience: formData.get('pet_experience'),
+
+                preferred_pet_age_min: formData.get('preferred_pet_age_min') ? parseInt(formData.get('preferred_pet_age_min')) : null,
+                preferred_pet_age_max: formData.get('preferred_pet_age_max') ? parseInt(formData.get('preferred_pet_age_max')) : null
             };
 
             const submitBtn = document.getElementById('submitBtn');

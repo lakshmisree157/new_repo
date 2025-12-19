@@ -190,7 +190,7 @@
             try {
                 const result = await login(email, password);
 
-                if (result.access_token) {
+                if (result.access_token && result.user && result.user.role === 'center') {
                     messageEl.className = 'message success';
                     messageEl.textContent = '✓ Login successful! Redirecting...';
                     setTimeout(() => {
@@ -198,11 +198,11 @@
                     }, 1200);
                 } else {
                     messageEl.className = 'message error';
-                    messageEl.textContent = '✗ Error: ' + (result.error || 'Unknown error');
+                    messageEl.textContent = '✗ Login failed';
                 }
             } catch (error) {
                 messageEl.className = 'message error';
-                messageEl.textContent = '✗ Error: ' + error.message;
+                messageEl.textContent = '✗ Login failed';
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;

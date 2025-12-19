@@ -97,7 +97,12 @@ def register():
         'address': data.get('address'),
         'phone_number': data.get('phone_number'),
         'lifestyle': data.get('lifestyle'),
-        'home_environment': data.get('home_environment')
+        'home_environment': data.get('home_environment'),
+        'family_composition': data.get('family_composition'),
+        'pet_experience': data.get('pet_experience'),
+
+        'preferred_pet_age_min': data.get('preferred_pet_age_min'),
+        'preferred_pet_age_max': data.get('preferred_pet_age_max')
     }
     
     result, status_code = register_user(username, email, password, role, **kwargs)
@@ -170,6 +175,11 @@ def profile():
         "phone_number": "123-456-7890", // for adopters
         "lifestyle": "active",        // for adopters
         "home_environment": "house",  // for adopters
+        "family_composition": "single", // for adopters
+        "pet_experience": "experienced", // for adopters
+
+        "preferred_pet_age_min": 6,   // for adopters
+        "preferred_pet_age_max": 24,  // for adopters
         "center_name": "New Center",  // for centers
         "location": "New Location",   // for centers
         "contact_number": "098-765-4321" // for centers

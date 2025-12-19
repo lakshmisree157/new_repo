@@ -1,18 +1,34 @@
-# TODO: Fix Pet Adoption System Issues
+# TODO for Compatibility Prediction Module
 
-## Issues to Fix
-1. **Adding veterinary records fails** - Debug and fix vet record addition.
-2. **Adopter page: Display age alongside center name in dog details** - Update adopter-dashboard.html to show age in dog cards.
-3. **Updating profile not working** - Add PATCH /api/auth/profile route in auth_routes.py.
-4. **Accept/reject buttons not disabling after approval** - Ensure buttons disable after status update in center-dashboard.html.
-5. **Dog not updated in MongoDB when adopted** - Set animal.is_adopted = True when request approved in adoption_controller.py.
-6. **Center page not updating automatically** - Reload dogs list after request status update in center-dashboard.html.
+## 1. Update ml_model/scripts/compatibility.py
+- [x] Import necessary libraries (pandas, sklearn, joblib, numpy)
+- [x] Define preprocessing pipeline:
+  - [x] OneHotEncoder for categorical features: lifestyle, home_environment, family_composition, pet_experience, species, breed
+  - [x] MinMaxScaler for numeric features: preferred_pet_age_min, preferred_pet_age_max, age, activity_level, temperament_score
+  - [x] Create derived feature: age_match
+- [x] Define RandomForestRegressor model with specified parameters
+- [x] Implement predict_compatibility(adopter_data, pet_data) function:
+  - [x] Preprocess adopter and pet data
+  - [x] Combine into feature vector
+  - [x] Predict score (0-100)
+  - [x] Determine match_label based on thresholds
+  - [x] Return dict with compatibility_score and match_label
+- [x] Define placeholder train_model function for future training
+- [x] Add clear documentation explaining deferred training
 
-## Implementation Steps
-- [x] Add PATCH /api/auth/profile route in backend/routes/auth_routes.py
-- [x] Modify update_request_status in backend/controllers/adoption_controller.py to update animal.is_adopted
-- [x] Update center-dashboard.html to reload dogs after request status update
-- [x] Update adopter-dashboard.html to add age to dog cards
-- [x] Debug vet record addition: Check form data and API call in center-dashboard.html
-- [x] Ensure request buttons disable after approval by re-rendering requests
-- [x] Test all changes
+## 2. Verify requirements.txt has necessary dependencies
+- [x] Ensure pandas, scikit-learn, joblib, numpy are present
+
+## 3. Test the module (placeholder, since no training data)
+- [x] Run the script to ensure no errors in definitions
+
+## 4. Add API endpoint for compatibility prediction
+- [x] Add /api/adoptions/compatibility route in adoption_routes.py
+- [x] Fetch adopter and pet data from DB
+- [x] Call predict_compatibility and return result
+
+## 5. Update database schema
+- [x] Add compatibility_score column to post_adoption_tracking table
+
+## 6. Update TODO.md
+- [x] Mark completed tasks

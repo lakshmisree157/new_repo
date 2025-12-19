@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adopter Login - Pet Adoption System</title>
+    <title>Admin Registration - Pet Adoption System</title>
     <style>
         * {
             margin: 0;
@@ -26,7 +26,7 @@
             border-radius: 8px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
             width: 100%;
-            max-width: 400px;
+            max-width: 500px;
             padding: 40px;
         }
 
@@ -145,12 +145,17 @@
 </head>
 <body>
     <div class="container">
-        <h1>🐾 Adopter Login</h1>
-        <p class="subtitle">Find your perfect pet companion</p>
+        <h1>👑 Register as Admin</h1>
+        <p class="subtitle">Create your admin account</p>
 
         <div id="message" class="message"></div>
 
-        <form id="loginForm">
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required>
@@ -161,48 +166,54 @@
                 <input type="password" id="password" name="password" required>
             </div>
 
-            <button type="submit" id="submitBtn">Login as Adopter</button>
+            <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <input type="text" id="fullName" name="full_name" required>
+            </div>
+
+            <button type="submit" id="submitBtn">Create Admin Account</button>
         </form>
 
         <div class="link">
-            Don't have an account? <a href="/adopter-register">Register as Adopter</a><br>
             <a href="/">← Back to Home</a>
         </div>
     </div>
 
     <script type="module">
-        import { login } from '../assets/api.js';
+        import { apiFetch } from '../assets/api.js';
 
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const formData = new FormData(this);
+
+            const payload = {
+                username: formData.get('username'),
+                email: formData.get('email'),
+                password: formData.get('password'),
+                full_name: formData.get('full_name'),
+                role: 'admin'
+            };
 
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.textContent;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="loading"></span> Logging in...';
+            submitBtn.innerHTML = '<span class="loading"></span> Creating account...';
 
             const messageEl = document.getElementById('message');
             messageEl.className = 'message';
 
             try {
-                const result = await login(email, password);
-
-                if (result.access_token && result.user && result.user.role === 'adopter') {
-                    messageEl.className = 'message success';
-                    messageEl.textContent = '✓ Login successful! Redirecting...';
-                    setTimeout(() => {
-                        window.location.href = '/adopter-dashboard.html';
-                    }, 2000);
-                } else {
-                    messageEl.className = 'message error';
-                    messageEl.textContent = '✗ Login failed';
-                }
+                await apiFetch('/api/auth/register', 'POST', payload);
+                messageEl.className = 'message success';
+                messageEl.textContent = '✓ Account created successfully! Redirecting to home...';
+                document.getElementById('registerForm').reset();
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
             } catch (error) {
                 messageEl.className = 'message error';
-                messageEl.textContent = '✗ Login failed';
+                messageEl.textContent = '✗ Error: ' + error.message;
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;

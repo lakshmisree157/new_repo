@@ -37,7 +37,7 @@ async function loadRequests() {
             requestsList.innerHTML = '';
             for (const req of result.requests) {
                 const li = document.createElement('li');
-                li.textContent = `Request ID: ${req.request_id}, Status: ${req.status}, Request Date: ${req.request_date}`;
+                li.textContent = `Request ID: ${req.request_id}, Status: ${req.status}, Request Date: ${req.request_date}, Compatibility Score: ${req.compatibility_score || 'N/A'}`;
                 if (req.status === 'pending') {
                     const cancelBtn = document.createElement('button');
                     cancelBtn.textContent = 'Cancel';

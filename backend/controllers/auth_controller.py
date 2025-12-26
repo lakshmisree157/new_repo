@@ -110,6 +110,10 @@ def register_user(username, email, password, role, db_session=None, **kwargs):
             preferred_pet_age_min_val = kwargs.get('preferred_pet_age_min')
             preferred_pet_age_max_val = kwargs.get('preferred_pet_age_max')
 
+            # Normalize family_composition to replace underscores with spaces
+            if family_composition_val:
+                family_composition_val = family_composition_val.replace('_', ' ')
+
             # convert to enum objects if provided
             lifestyle_enum = None
             home_env_enum = None

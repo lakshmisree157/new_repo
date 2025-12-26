@@ -254,10 +254,10 @@ def predict_compatibility_route():
             return jsonify(error='Adopter not found'), 404
 
         adopter_data = {
-            'lifestyle': adopter.lifestyle,
-            'home_environment': adopter.home_environment,
-            'family_composition': adopter.family_composition,
-            'pet_experience': adopter.pet_experience,
+            'lifestyle': adopter.lifestyle.value if adopter.lifestyle else None,
+            'home_environment': adopter.home_environment.value if adopter.home_environment else None,
+            'family_composition': adopter.family_composition.value if adopter.family_composition else None,
+            'pet_experience': adopter.pet_experience.value if adopter.pet_experience else None,
             'preferred_pet_age_min': adopter.preferred_pet_age_min,
             'preferred_pet_age_max': adopter.preferred_pet_age_max
         }
@@ -280,9 +280,11 @@ def predict_compatibility_route():
             }
         except Exception as e:
             return jsonify(error=f'MongoDB error: {str(e)}'), 500
+        
+        input_data = {**adopter_data, **pet_data}
 
         # Predict compatibility
-        result = predict_compatibility(adopter_data, pet_data)
+        result = predict_compatibility(input_data)
 
         # Store compatibility_score in post_adoption_tracking if request exists
         # For now, just return the result

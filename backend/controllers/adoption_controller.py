@@ -84,9 +84,10 @@ def create_adoption_request(adopter_user_id, center_id, animal_mongo_id, db_sess
             'activity_level': latest_vet.stats.get('activity_level', 0) if latest_vet else 0,
             'temperament_score': latest_vet.temperament_score if latest_vet else 0.5
         }
+        input_data = {**adopter_data, **pet_data}
 
         # Predict compatibility
-        result = predict_compatibility(adopter_data, pet_data)
+        result = predict_compatibility(input_data)
         compatibility_score = result['compatibility_score']
 
         req = AdoptionRequest(

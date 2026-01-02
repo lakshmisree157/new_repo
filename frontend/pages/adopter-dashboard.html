@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Adopter Dashboard</title>
+  <title>Adopter Dashboard - PetConnect</title>
   <link rel="stylesheet" href="../assets/styles.css" />
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body>
   <header class="dashboard-header">
     <div>
-      <p class="eyebrow">Adopter Workspace</p>
-      <h1>Welcome, <span id="welcomeName">Friend</span></h1>
+      <p class="eyebrow">Adopter Hub</p>
+      <h1>Welcome back, <span id="welcomeName" style="color: var(--primary);">Friend</span>! 🐾</h1>
     </div>
     <div class="header-actions">
-      <button id="logoutBtn" class="ghost-btn">Logout</button>
       <button id="profileToggle" class="profile-icon" aria-label="Open profile panel">
         <span id="profileInitials">A</span>
       </button>
+      <button id="logoutBtn" class="ghost-btn">Logout</button>
     </div>
   </header>
 
@@ -155,6 +156,16 @@
             <option value="poor">Poor</option>
           </select>
         </label>
+        <label id="happinessRatingGroup">
+          How happy are you with the adoption? (1-5)
+          <div class="rating-stars" style="display: flex; gap: 10px; margin: 10px 0;">
+            <label><input type="radio" name="happiness_rating" value="1" required /> 1</label>
+            <label><input type="radio" name="happiness_rating" value="2" required /> 2</label>
+            <label><input type="radio" name="happiness_rating" value="3" required /> 3</label>
+            <label><input type="radio" name="happiness_rating" value="4" required /> 4</label>
+            <label><input type="radio" name="happiness_rating" value="5" required /> 5</label>
+          </div>
+        </label>
         <label>
           Notes
           <textarea name="notes" rows="4" required></textarea>
@@ -272,7 +283,8 @@
       const payload = {
         followup_date: formData.get('followup_date'),
         notes: formData.get('notes'),
-        health_status: formData.get('health_status')
+        health_status: formData.get('health_status'),
+        happiness_rating: formData.get('happiness_rating')
       };
       try {
         const response = await apiFetch(
@@ -284,6 +296,8 @@
         alert(response.message || 'Feedback submitted. Thank you!');
         toggleModal(feedbackModal, false);
         event.target.reset();
+        await loadFeedback();
+        await loadRequests();
       } catch (error) {
         alert('Unable to submit feedback: ' + error.message);
       }
@@ -504,11 +518,11 @@
               Delete Request
             </button>
             ${shouldShowFeedback(request)
-              ? `<button class="primary-btn light send-feedback" data-request="${request.request_id}" data-dog="${request.animal_name || 'Dog'}" data-approved="${request.approval_date || ''}">
+            ? `<button class="primary-btn light send-feedback" data-request="${request.request_id}" data-dog="${request.animal_name || 'Dog'}" data-approved="${request.approval_date || ''}">
                   Send Feedback
                 </button>`
-              : ''
-            }
+            : ''
+          }
           </div>
         `;
         requestsContainer.appendChild(card);
@@ -569,6 +583,7 @@
           <p class="muted">Follow-up on ${followupDate}</p>
           <div class="feedback-card__body">
             <p><strong>Health Status:</strong> ${fb.health_status || 'Not specified'}</p>
+            ${fb.happiness_rating ? `<p><strong>Happiness Rating:</strong> ${'★'.repeat(fb.happiness_rating)}${'☆'.repeat(5 - fb.happiness_rating)} (${fb.happiness_rating}/5)</p>` : ''}
             <p><strong>Notes:</strong> ${fb.notes || 'No notes provided'}</p>
           </div>
         `;
@@ -600,6 +615,23 @@
       document.querySelector('#feedbackDogName').textContent = dogName;
       const today = new Date().toISOString().split('T')[0];
       document.querySelector('#feedbackForm [name="followup_date"]').value = today;
+
+      // Check if this is the first feedback for this request
+      const hasFeedback = state.feedback.some(fb => fb.request_id == requestId);
+      const ratingGroup = document.getElementById('happinessRatingGroup');
+      const ratingInputs = ratingGroup.querySelectorAll('input[type="radio"]');
+
+      if (hasFeedback) {
+        ratingGroup.classList.add('hidden');
+        ratingInputs.forEach(input => {
+          input.required = false;
+          input.checked = false;
+        });
+      } else {
+        ratingGroup.classList.remove('hidden');
+        ratingInputs.forEach(input => input.required = true);
+      }
+
       toggleModal(feedbackModal, true);
     }
 
@@ -661,4 +693,5 @@
     window.addEventListener('beforeunload', stopPolling);
   </script>
 </body>
+
 </html>

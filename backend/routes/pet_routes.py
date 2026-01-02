@@ -264,7 +264,11 @@ def add_vet_report(animal_id):
             "heart_rate": 75,
             "activity_level": 85
         },
-        "temperament_score": 8.5
+        "aggression_level": 2,
+        "anxiety_level": 1,
+        "sociability": 4,
+        "obedience": 5,
+        "health_behavior_flags": ["arthritis"]
     }
     
     Response: 201 Created
@@ -272,6 +276,7 @@ def add_vet_report(animal_id):
         "message": "Vet record added successfully",
         "animal_id": "507f1f77bcf86cd799439011",
         "vet_records_count": 1,
+        "temperament_score": 0.75,
         "animal": { ... full animal object ... }
     }
     """
@@ -282,7 +287,12 @@ def add_vet_report(animal_id):
         file_url=data.get('file_url'),
         summary=data.get('summary'),
         stats=data.get('stats'),
-        temperament_score=data.get('temperament_score')
+        temperament_score=None,  # Always computed, not taken as input
+        aggression_level=data.get('aggression_level'),
+        anxiety_level=data.get('anxiety_level'),
+        sociability=data.get('sociability'),
+        obedience=data.get('obedience'),
+        health_behavior_flags=data.get('health_behavior_flags')
     )
     return jsonify(result), status_code
 

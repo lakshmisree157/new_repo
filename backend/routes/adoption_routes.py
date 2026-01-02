@@ -135,12 +135,14 @@ def post_tracking(request_id):
     followup_date = data.get('followup_date')
     notes = data.get('notes')
     health_status = data.get('health_status')
+    happiness_rating = data.get('happiness_rating')
 
     result, status = add_post_adoption_tracking(
         request_id=request_id,
         followup_date=followup_date,
         notes=notes,
-        health_status=health_status
+        health_status=health_status,
+        happiness_rating=happiness_rating
     )
     return jsonify(result), status
 

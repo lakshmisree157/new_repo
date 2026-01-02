@@ -3,207 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pet Adoption System - Find Your Perfect Companion</title>
+    <title>Pet Adoption - Find Your Perfect Companion</title>
+    <link rel="stylesheet" href="/assets/styles.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            min-height: 100vh;
+        .hero-section {
+            background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('/assets/images/hero.png');
+            background-size: cover;
+            background-position: center;
+            height: 60vh;
             display: flex;
-            flex-direction: column;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-        }
-
-        .header h1 {
-            color: white;
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.2rem;
-        }
-
-        .main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 40px 20px;
-            text-align: center;
-        }
-
-        .hero {
-            max-width: 800px;
-            margin-bottom: 40px;
-        }
-
-        .hero h2 {
             color: white;
-            font-size: 2rem;
+            text-align: center;
+            border-radius: 0 0 50px 50px;
+            margin-bottom: 50px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .hero-content h1 {
+            font-size: 4rem;
             margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
 
-        .hero p {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.1rem;
-            line-height: 1.6;
-            margin-bottom: 30px;
+        .hero-content p {
+            font-size: 1.5rem;
+            max-width: 700px;
+            margin: 0 auto 40px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
         }
 
-        .cta-buttons {
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-item {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid var(--border);
+        }
+
+        .feature-item:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary-light);
+        }
+
+        .feature-icon {
+            font-size: 50px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .cta-container {
             display: flex;
             gap: 20px;
             justify-content: center;
             flex-wrap: wrap;
+            margin-top: 30px;
         }
 
-        .btn {
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #218838;
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: #007bff;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #0056b3;
-            transform: translateY(-2px);
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            max-width: 1000px;
-            margin-top: 40px;
-        }
-
-        .feature-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 30px;
+        .footer-simple {
             text-align: center;
-            color: white;
-        }
-
-        .feature-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 15px;
-        }
-
-        .feature-card p {
-            font-size: 1rem;
-            line-height: 1.5;
-        }
-
-        .footer {
-            background: rgba(0, 0, 0, 0.2);
-            color: rgba(255, 255, 255, 0.8);
-            text-align: center;
-            padding: 20px;
-            font-size: 0.9rem;
-        }
-
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
-            }
-
-            .hero h2 {
-                font-size: 1.5rem;
-            }
-
-            .cta-buttons {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .btn {
-                width: 200px;
-            }
+            padding: 60px 20px;
+            color: var(--muted);
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <header class="header">
-        <h1>🐾 Pet Adoption System</h1>
-        <p>Connecting loving homes with animals in need</p>
+    <header>
+        <h1>🐾 PetConnect</h1>
+        <div class="header-actions">
+            <a href="/adopter-login" class="ghost-btn" style="border-color: white; color: white;">Login</a>
+        </div>
     </header>
 
-    <main class="main">
-        <section class="hero">
-            <h2>Find Your Perfect Companion</h2>
-            <p>
-                Welcome to our pet adoption platform where you can discover adorable animals waiting for their forever homes.
-                Whether you're an adoption center looking to showcase your animals or an adopter seeking a new family member,
-                we've made the process simple and heartfelt.
-            </p>
-            <div class="cta-buttons">
-                <a href="/adopter-login" class="btn btn-primary">🐾 Login as Adopter</a>
-                <a href="/center-login" class="btn btn-secondary">🏢 Login as Center</a>
-                <a href="/admin-login" class="btn btn-secondary" style="background: #dc3545;">👑 Login as Admin</a>
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1>Find Your Forever Friend</h1>
+            <p>Every pet deserves a loving home. Start your journey of companionship today with our pet adoption platform.</p>
+            <div class="cta-container">
+                <a href="/adopter-register" class="primary-btn">Join as Adopter</a>
+                <a href="/center-register" class="primary-btn" style="background: white; color: var(--primary);">Open Center</a>
             </div>
-            <div class="cta-buttons" style="margin-top: 10px;">
-                <a href="/adopter-register" class="btn btn-primary" style="background: #28a745;">🐾 Register as Adopter</a>
-                <a href="/center-register" class="btn btn-secondary" style="background: #17a2b8;">🏢 Register as Center</a>
-                <a href="/admin-register" class="btn btn-secondary" style="background: #dc3545;">👑 Register as Admin</a>
-            </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="features">
-            <div class="feature-card">
-                <h3>🐕 For Adopters</h3>
-                <p>Browse available pets, submit adoption requests, and track your applications. Find the perfect match for your lifestyle and home.</p>
+    <main>
+        <div class="features-grid">
+            <div class="feature-item">
+                <span class="feature-icon">🐕</span>
+                <h3>For Adopters</h3>
+                <p>Browse adorable pets looking for homes, manage your requests, and find your perfect match.</p>
+                <a href="/adopter-login" class="primary-btn light" style="margin-top: 20px; display: inline-block;">Get Started</a>
             </div>
-            <div class="feature-card">
-                <h3>🏢 For Centers</h3>
-                <p>Manage your animal listings, review adoption requests, and provide post-adoption support. Connect with potential adopters.</p>
+            <div class="feature-item" style="background: var(--bg-warm);">
+                <span class="feature-icon">🏠</span>
+                <h3>For Centers</h3>
+                <p>Register your center, list pets for adoption, and connect with potential loving families.</p>
+                <a href="/center-login" class="primary-btn light" style="margin-top: 20px; display: inline-block;">Center Portal</a>
             </div>
-            <div class="feature-card">
-                <h3>❤️ Our Mission</h3>
-                <p>Every animal deserves a loving home. We're committed to making the adoption process transparent, efficient, and joyful for everyone.</p>
+            <div class="feature-item">
+                <span class="feature-icon">🛡️</span>
+                <h3>Admin Portal</h3>
+                <p>Manage users, verify centers, and ensure the safety and happiness of every pet in our system.</p>
+                <a href="/admin-login" class="primary-btn light" style="margin-top: 20px; display: inline-block; background: #dfe6e9; color: #2d3436;">Admin Access</a>
             </div>
-        </section>
+        </div>
     </main>
 
-    <footer class="footer">
-        <p>&copy; 2025 Pet Adoption System. Made with ❤️ for animals and their future families.</p>
+    <footer class="footer-simple">
+        <p>&copy; 2024 PetConnect. Made with ❤️ for every furry friend.</p>
     </footer>
 </body>
 </html>

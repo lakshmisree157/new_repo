@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Adoption Center Dashboard</title>
+  <title>Center Portal - PetConnect</title>
   <link rel="stylesheet" href="../assets/styles.css" />
-  <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body>
   <header class="dashboard-header">
     <div>
-      <p class="eyebrow">Center Workspace</p>
-      <h1>Welcome, <span id="centerNameHeading">Center</span></h1>
+      <p class="eyebrow">Center Management</p>
+      <h1><span id="centerNameHeading">Center Hub</span> 🏢</h1>
     </div>
     <div class="header-actions">
-      <button id="logoutBtn" class="ghost-btn">Logout</button>
       <button id="profileToggle" class="profile-icon" aria-label="Open profile panel">
         <span id="centerInitials">C</span>
       </button>
+      <button id="logoutBtn" class="ghost-btn">Logout</button>
     </div>
   </header>
 
@@ -98,18 +99,18 @@
       <button class="modal-close" data-close="addDogModal">&times;</button>
       <h3>Add Dog</h3>
       <form id="addDogForm">
-        <label>Name <input type="text" name="name" required /></label>
-        <label>Breed <input type="text" name="breed" /></label>
-        <label>Age (months) <input type="number" name="age" min="0" /></label>
+        <label>Name <input type="text" name="name" required style="border: 1px solid #ccc;" /></label>
+        <label>Breed <input type="text" name="breed" style="border: 1px solid #ccc;" /></label>
+        <label>Age (months) <input type="number" name="age" min="0" style="border: 1px solid #ccc;" /></label>
         <label>Gender
-          <select name="gender">
+          <select name="gender" style="border: 1px solid #ccc;">
             <option value="">Select</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
         </label>
         <label>Description
-          <textarea name="description" rows="3"></textarea>
+          <textarea name="description" rows="3" style="border: 1px solid #ccc;"></textarea>
         </label>
         <div class="modal-actions">
           <button type="submit" class="primary-btn">Save Dog</button>
@@ -161,10 +162,10 @@
         <label>Summary
           <textarea name="summary" rows="3"></textarea>
         </label>
-        <label>Weight (kg) <input type="number" step="0.1" name="weight" /></label>
-        <label>Heart Rate (bpm) <input type="number" name="heart_rate" /></label>
-        <label>Activity Level (%) <input type="number" name="activity_level" min="0" max="100" /></label>
-        <label>Temperament Score (0-10) <input type="number" min="0" max="10" step="0.1" name="temperament_score" /></label>
+        <label>Weight (kg) <input type="number" step="0.1" name="weight" placeholder="e.g., 5.5 (0-50 kg)" /></label>
+        <label>Heart Rate (bpm) <input type="number" name="heart_rate" placeholder="e.g., 80 (60-180 bpm)" /></label>
+        <label>Activity Level (%) <input type="number" name="activity_level" min="0" max="100"
+            placeholder="e.g., 75 (0-100%)" /></label>
         <div class="modal-actions">
           <button type="submit" class="primary-btn">Save Record</button>
           <button type="button" class="ghost-btn" data-close="vetRecordModal">Cancel</button>
@@ -344,8 +345,7 @@
       const payload = {
         file_url: formData.get('file_url'),
         summary: formData.get('summary'),
-        stats,
-        temperament_score: formData.get('temperament_score') ? parseFloat(formData.get('temperament_score')) : null
+        stats
       };
       try {
         await apiFetch(`/api/pets/${state.vetDogId}/vet-record`, 'POST', payload, token);
@@ -421,7 +421,7 @@
       state.dogs.forEach(dog => {
         const card = document.createElement('article');
         card.className = 'request-card';
-    card.innerHTML = `
+        card.innerHTML = `
       <div class="request-card__header">
         <div>
           <h3>${dog.name}</h3>
@@ -438,9 +438,9 @@
         ${dog.is_adopted ? '' : '<button class="primary-btn light add-vet" data-dog="' + dog.id + '">Add Veterinary Records</button>'}
       </div>
     `;
-    const viewBtn = card.querySelector('.view-dog-details');
-    viewBtn.addEventListener('click', () => openDogDetailsModal(dog));
-    dogsGrid.appendChild(card);
+        const viewBtn = card.querySelector('.view-dog-details');
+        viewBtn.addEventListener('click', () => openDogDetailsModal(dog));
+        dogsGrid.appendChild(card);
       });
 
 
@@ -452,27 +452,27 @@
       });
     }
 
-  function renderRequests() {
-  requestsGrid.innerHTML = '';
+    function renderRequests() {
+      requestsGrid.innerHTML = '';
 
-  if (!state.requests.length) {
-    noRequests.classList.remove('hidden');
-    return;
-  }
+      if (!state.requests.length) {
+        noRequests.classList.remove('hidden');
+        return;
+      }
 
-  noRequests.classList.add('hidden');
+      noRequests.classList.add('hidden');
 
-  state.requests.forEach(req => {
-    const card = document.createElement('article');
-    card.className = 'request-card';
+      state.requests.forEach(req => {
+        const card = document.createElement('article');
+        card.className = 'request-card';
 
-    const statusClass = mapStatusClass(req.status);
-    const statusLabel = formatStatusLabel(req.status);
+        const statusClass = mapStatusClass(req.status);
+        const statusLabel = formatStatusLabel(req.status);
 
-    // Disable logic (single source)
-    const disableActions = ['approved', 'rejected', 'completed'].includes(req.status);
+        // Disable logic (single source)
+        const disableActions = ['approved', 'rejected', 'completed'].includes(req.status);
 
-    card.innerHTML = `
+        card.innerHTML = `
       <div class="request-card__header">
         <div>
           <h3>${req.animal_name || 'Dog'}</h3>
@@ -503,56 +503,57 @@
       </div>
     `;
 
-    requestsGrid.appendChild(card);
-  });
+        requestsGrid.appendChild(card);
+      });
 
-  // ACCEPT HANDLER
-  requestsGrid.querySelectorAll('.accept-request').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const requestId = btn.dataset.request;
-      const req = state.requests.find(r => r.request_id == requestId);
+      // ACCEPT HANDLER
+      requestsGrid.querySelectorAll('.accept-request').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const requestId = btn.dataset.request;
+          const req = state.requests.find(r => r.request_id == requestId);
 
-      if (!req || req.status !== 'pending') return;
+          if (!req || req.status !== 'pending') return;
 
-      // Immediate UI lock
-      btn.disabled = true;
-      btn.closest('.request-card')
-        .querySelector('.reject-request').disabled = true;
+          // Immediate UI lock
+          btn.disabled = true;
+          btn.closest('.request-card')
+            .querySelector('.reject-request').disabled = true;
 
-      try {
-        await updateRequestStatus(requestId, 'approved');
-        req.status = 'approved';
-        renderRequests();
-      } catch (err) {
-        console.error(err);
-        renderRequests(); // rollback UI
-      }
-    });
-  });
+          try {
+            await updateRequestStatus(requestId, 'approved');
+            req.status = 'approved';
+            renderRequests();
+          } catch (err) {
+            console.error(err);
+            renderRequests(); // rollback UI
+          }
+        });
+      });
 
-  // REJECT HANDLER
-  requestsGrid.querySelectorAll('.reject-request').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const requestId = btn.dataset.request;
-      const req = state.requests.find(r => r.request_id == requestId);
+      // REJECT HANDLER
+      requestsGrid.querySelectorAll('.reject-request').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const requestId = btn.dataset.request;
+          const req = state.requests.find(r => r.request_id == requestId);
 
-      if (!req || req.status !== 'pending') return;
+          if (!req || req.status !== 'pending') return;
 
-      // Immediate UI lock
-      btn.disabled = true;
-      btn.closest('.request-card')
-        .querySelector('.accept-request').disabled = true;
+          // Immediate UI lock
+          btn.disabled = true;
+          btn.closest('.request-card')
+            .querySelector('.accept-request').disabled = true;
 
-      try {
-        await updateRequestStatus(requestId, 'rejected');
-        req.status = 'rejected';
-        renderRequests();
-      } catch (err) {
-        console.error(err);
-        renderRequests(); // rollback UI
-      }
-    });
-  });}
+          try {
+            await updateRequestStatus(requestId, 'rejected');
+            req.status = 'rejected';
+            renderRequests();
+          } catch (err) {
+            console.error(err);
+            renderRequests(); // rollback UI
+          }
+        });
+      });
+    }
 
 
     function renderFeedback() {
@@ -754,5 +755,5 @@
     window.addEventListener('beforeunload', stopPolling);
   </script>
 </body>
-</html>
 
+</html>

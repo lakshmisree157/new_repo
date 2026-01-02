@@ -266,7 +266,7 @@ def update_request_status(request_id, new_status, db_session=None):
             session.close()
 
 
-def add_post_adoption_tracking(request_id, followup_date=None, notes=None, health_status=None, db_session=None):
+def add_post_adoption_tracking(request_id, followup_date=None, notes=None, health_status=None, happiness_rating=None, db_session=None):
     session_created = False
     if db_session is None:
         session = Session()
@@ -279,11 +279,38 @@ def add_post_adoption_tracking(request_id, followup_date=None, notes=None, healt
         if not req:
             return {'error': 'Adoption request not found'}, 404
 
+        # Check for existing feedback
+        existing_feedback = session.query(PostAdoptionTracking).filter(
+            PostAdoptionTracking.request_id == request_id
+        ).order_by(PostAdoptionTracking.created_at.desc()).all()
+
+        if not existing_feedback:
+            # First feedback: happiness_rating is allowed (and maybe required)
+            if happiness_rating is None:
+                return {'error': 'Happiness rating is required for the first feedback'}, 400
+            try:
+                hr = int(happiness_rating)
+                if hr < 1 or hr > 5:
+                    raise ValueError
+            except:
+                return {'error': 'Happiness rating must be an integer between 1 and 5'}, 400
+        else:
+            # Subsequent feedback: check 5-day interval
+            latest = existing_feedback[0]
+            days_since = (datetime.utcnow() - latest.created_at).days
+            if days_since < 5:
+                return {'error': f'You can only provide feedback every 5 days. It has been {days_since} days since your last feedback.'}, 403
+            
+            # Happiness rating only allowed once
+            if happiness_rating is not None:
+                return {'error': 'Happiness rating can only be submitted once (with the first feedback)'}, 400
+
         track = PostAdoptionTracking(
             request_id=request_id,
-            followup_date=followup_date,
+            followup_date=followup_date or datetime.utcnow().date(),
             notes=notes,
-            health_status=health_status
+            health_status=health_status,
+            happiness_rating=happiness_rating
         )
         session.add(track)
         session.commit()
@@ -340,7 +367,8 @@ def get_feedback_for_center(center_id, db_session=None):
                 'adopter_name': adopter.full_name if adopter else f'Adopter #{request.adopter_id}',
                 'notes': track.notes,
                 'health_status': track.health_status.value if track.health_status else None,
-                'followup_date': track.followup_date.isoformat() if track.followup_date else None
+                'followup_date': track.followup_date.isoformat() if track.followup_date else None,
+                'happiness_rating': track.happiness_rating
             })
 
         return {'total': len(feedback_items), 'feedback': feedback_items}, 200
@@ -404,7 +432,8 @@ def get_feedback_for_adopter(adopter_user_id, db_session=None):
                 'center_name': center.center_name if center else 'Unknown Center',
                 'notes': track.notes,
                 'health_status': track.health_status.value if track.health_status else None,
-                'followup_date': track.followup_date.isoformat() if track.followup_date else None
+                'followup_date': track.followup_date.isoformat() if track.followup_date else None,
+                'happiness_rating': track.happiness_rating
             })
 
         return {'total': len(feedback_items), 'feedback': feedback_items}, 200

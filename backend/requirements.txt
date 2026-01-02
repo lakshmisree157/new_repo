@@ -7,3 +7,4 @@ Flask-JWT-Extended
 Flask-Bcrypt
 flask-cors
 mongoengine
+sendgrid

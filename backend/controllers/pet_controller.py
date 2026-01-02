@@ -121,7 +121,7 @@ def get_animal_by_id(animal_id):
         return {'error': str(e)}, 500
 
 
-def add_vet_record(animal_id, file_url=None, summary=None, stats=None, temperament_score=None, allowed_center_id=None):
+def add_vet_record(animal_id, file_url=None, summary=None, stats=None, temperament_score=None, allowed_center_id=None, aggression_level=None, anxiety_level=None, sociability=None, obedience=None, health_behavior_flags=None):
     """
     Add a veterinary record to an animal.
     
@@ -130,7 +130,9 @@ def add_vet_record(animal_id, file_url=None, summary=None, stats=None, temperame
         file_url: link to vet report
         summary: visit summary
         stats: dict with health metrics (weight, heart_rate, etc.)
-        temperament_score: 0-10 behavioral score (for ML)
+        temperament_score: 0-1 behavioral score (computed)
+        aggression_level, anxiety_level, sociability, obedience: 0-5 scales
+        health_behavior_flags: binary/ordinal indicators
     
     Returns:
         dict with updated animal or error dict
@@ -142,6 +144,23 @@ def add_vet_record(animal_id, file_url=None, summary=None, stats=None, temperame
 
         if allowed_center_id is not None and animal.center_id != allowed_center_id:
             return {'error': 'Forbidden: cannot add vet record to another center\'s animal'}, 403
+
+        # Compute temperament_score if not provided
+        if temperament_score is None:
+            from ml_model.scripts.nlp_test_pipeline import calculate_temperament_score
+            pet_data = {
+                "weight": stats.get("weight", 0) if stats else 0,
+                "heart_rate_bpm": stats.get("heart_rate", 0) if stats else 0,
+                "activity_level": stats.get("activity_level", 0) if stats else 0,
+                "medical_flags": health_behavior_flags or [],
+                "vet_notes": summary or "",
+                "aggression_level": aggression_level or 0,
+                "anxiety_level": anxiety_level or 0,
+                "sociability": sociability or 0,
+                "obedience": obedience or 0
+            }
+            result = calculate_temperament_score(pet_data)
+            temperament_score = result["temperament_score"]
 
         vet_record = VetRecord(
             file_url=file_url,
@@ -159,6 +178,7 @@ def add_vet_record(animal_id, file_url=None, summary=None, stats=None, temperame
             'message': 'Vet record added successfully',
             'animal_id': str(animal.id),
             'vet_records_count': len(animal.vet_records),
+            'temperament_score': temperament_score,
             'animal': animal.to_dict()
         }, 201
 

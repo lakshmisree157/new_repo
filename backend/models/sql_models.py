@@ -190,6 +190,8 @@ class PostAdoptionTracking(Base):
     followup_date = Column(Date)
     notes = Column(Text)
     health_status = Column(Enum(HealthStatusEnum))  # good, average, poor
+    happiness_rating = Column(Integer, nullable=True)  # 1-5 rating
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     adoption_request = relationship('AdoptionRequest', back_populates='tracking')

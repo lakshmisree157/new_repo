@@ -30,13 +30,13 @@ if MONGO_URI and MONGO_DB:
         # select database
         mongo_db = mongo_client[MONGO_DB]
 
-        print(f"✓ MongoDB connected: {MONGO_URI} | DB: {MONGO_DB}")
+        print(f"[OK] MongoDB connected: {MONGO_URI} | DB: {MONGO_DB}")
     except Exception as e:
-        print(f"✗ MongoDB connection failed: {e}")
+        print(f"[FAIL] MongoDB connection failed: {e}")
         mongo_client = None
         mongo_db = None
 else:
-    print("✗ MONGO_URI or MONGO_DB not configured in .env")
+    print("[FAIL] MONGO_URI or MONGO_DB not configured in .env")
 
 # MySQL / SQLAlchemy
 MYSQL_USER = os.getenv('MYSQL_USER') or os.getenv('MYSQL_USERNAME')
@@ -53,11 +53,11 @@ if MYSQL_USER and MYSQL_PASSWORD and MYSQL_DATABASE:
         # quick test
         with engine.connect() as conn:
             conn.execute(text('SELECT 1'))
-        print(f"✓ MySQL connected: {MYSQL_HOST}:{MYSQL_PORT} | DB: {MYSQL_DATABASE}")
+        print(f"[OK] MySQL connected: {MYSQL_HOST}:{MYSQL_PORT} | DB: {MYSQL_DATABASE}")
     except Exception as e:
-        print(f"✗ MySQL connection failed: {e}")
+        print(f"[FAIL] MySQL connection failed: {e}")
         engine = None
 else:
-    print("✗ MySQL credentials not configured in .env")
+    print("[FAIL] MySQL credentials not configured in .env")
 
 # Exported names: mongo_client, mongo_db, engine

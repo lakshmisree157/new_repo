@@ -21,6 +21,9 @@ from backend.routes.auth_routes import auth_bp
 from backend.routes.pet_routes import pet_bp
 from backend.routes.adoption_routes import adopt_bp
 
+# Import Firebase config to initialize admin SDK
+import config.firebase_config
+
 app = Flask(__name__)
 
 # Enable CORS for all routes (allow frontend to call backend)
@@ -110,6 +113,11 @@ def serve_admin_register():
 @app.route('/admin-dashboard.html')
 def serve_admin_dashboard():
     return send_from_directory(str(FRONTEND_PAGES), 'admin-dashboard.html')
+
+
+@app.route('/complete-profile.html')
+def serve_complete_profile():
+    return send_from_directory(str(FRONTEND_PAGES), 'complete-profile.html')
 
 
 @app.route('/assets/<path:filename>')

@@ -7,7 +7,9 @@ from flask_jwt_extended import create_access_token
 from flask_bcrypt import Bcrypt
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import or_
+import uuid
 
+from firebase_admin import auth as firebase_auth
 from backend.models.sql_models import User, AdoptionCenter, Adopter, RoleEnum, LifestyleEnum, HomeEnvironmentEnum, CenterStatusEnum, PetExperienceEnum, FamilyCompositionEnum
 from config.py_db import engine
 
@@ -315,6 +317,95 @@ def login_user(email, password, db_session=None):
     finally:
         if session_created:
             session.close()
+
+
+def verify_firebase_token(id_token):
+    """
+    Verify Firebase ID token and return user info.
+    """
+    try:
+        decoded_token = firebase_auth.verify_id_token(id_token)
+        return decoded_token
+    except Exception as e:
+        print(f"[verify_firebase_token] Error: {e}")
+        return None
+
+
+def firebase_login(id_token):
+    """
+    Login user via Firebase ID Token.
+    Returns JWT if user exists in SQL, otherwise prompts for registration.
+    """
+    decoded_token = verify_firebase_token(id_token)
+    if not decoded_token:
+        return {'error': 'Invalid or expired Firebase token'}, 401
+
+    email = decoded_token.get('email')
+    if not email:
+        return {'error': 'Email not provided by Firebase'}, 400
+
+    session = Session()
+    try:
+        user = session.query(User).filter(User.email == email).first()
+
+        if not user:
+            # User doesn't exist in SQL, Frontend should redirect to complete profile
+            return {
+                'message': 'Registration required',
+                'needs_registration': True,
+                'email': email,
+                'username_suggestion': email.split('@')[0]
+            }, 200
+
+        # User exists, generate JWT
+        user_id_str = str(user.user_id)
+        access_token = create_access_token(
+            identity=user_id_str,
+            additional_claims={'role': user.role.value}
+        )
+
+        return {
+            'message': 'Login successful',
+            'access_token': access_token,
+            'user': {
+                'user_id': user.user_id,
+                'username': user.username,
+                'email': user.email,
+                'role': user.role.value
+            }
+        }, 200
+    except Exception as e:
+        return {'error': str(e)}, 500
+    finally:
+        session.close()
+
+
+def firebase_register(id_token, role, username=None, **kwargs):
+    """
+    Complete registration for a Firebase user.
+    """
+    decoded_token = verify_firebase_token(id_token)
+    if not decoded_token:
+        return {'error': 'Invalid or expired Firebase token'}, 401
+
+    email = decoded_token.get('email')
+    if not email:
+        return {'error': 'Email not provided by Firebase'}, 400
+
+    if not username:
+        username = email.split('@')[0] + "_" + str(uuid.uuid4())[:4]
+
+    # Use a random password since they login via Firebase
+    dummy_password = str(uuid.uuid4())
+    
+    # Delegate to regular register_user logic
+    return register_user(
+        username=username,
+        email=email,
+        password=dummy_password,
+        role=role,
+        **kwargs
+    )
 
 
 def get_user_profile(user_id, db_session=None):

@@ -177,6 +177,16 @@
             <button type="submit" id="submitBtn">Login as Adopter</button>
         </form>
 
+        <div style="text-align: center; margin: 20px 0; color: #636e72;">
+            <span>OR</span>
+        </div>
+
+        <button id="googleLoginBtn"
+            style="background: white; color: #2d3436; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 10px;">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" alt="Google">
+            Sign in with Google
+        </button>
+
         <div class="link">
             Don't have an account? <a href="/adopter-register">Register as Adopter</a><br>
             <a href="/">← Back to Home</a>
@@ -185,6 +195,7 @@
 
     <script type="module">
         import { login } from '../assets/api.js';
+        import { handleGoogleLogin } from '../assets/firebase-auth-helper.js';
 
         document.getElementById('loginForm').addEventListener('submit', async function (e) {
             e.preventDefault();
@@ -220,6 +231,11 @@
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
             }
+        });
+
+        document.getElementById('googleLoginBtn').addEventListener('click', async function () {
+            const messageEl = document.getElementById('message');
+            await handleGoogleLogin(messageEl, 'adopter');
         });
     </script>
 </body>

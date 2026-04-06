@@ -260,6 +260,20 @@
                 </div>
             </div>
         </div>
+
+        <div class="section-card">
+            <div class="section-header">
+                <h2>All Centers</h2>
+                <button class="primary-btn light" id="view-all-centers-btn">View All Centers</button>
+            </div>
+
+            <div id="all-centers-content" style="display: none;">
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Fetching all centers...</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module">
@@ -286,12 +300,18 @@
         // Refresh button
         document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
 
+        // View All Centers button
+        document.getElementById('view-all-centers-btn').addEventListener('click', loadAllCenters);
+
         async function loadDashboard() {
             try {
-                const result = await apiFetch('/api/adoptions/admin/pending-centers', 'GET');
-                pendingCenters = result.centers || [];
+                const [pendingResult, statsResult] = await Promise.all([
+                    apiFetch('/api/adoptions/admin/pending-centers', 'GET'),
+                    apiFetch('/api/adoptions/admin/center-stats', 'GET')
+                ]);
+                pendingCenters = pendingResult.centers || [];
                 displayPendingCenters(pendingCenters);
-                updateStats(result.total);
+                updateStats(statsResult);
             } catch (error) {
                 console.error('Error loading dashboard:', error);
                 showMessage('Error loading dashboard: ' + error.message, 'error');
@@ -299,12 +319,11 @@
             }
         }
 
-        function updateStats(pendingCount) {
-            document.getElementById('pending-count').textContent = pendingCount;
-            // For demo purposes, setting static values. In a real app, you'd fetch these from the server
-            document.getElementById('total-centers').textContent = pendingCount + 5; // Mock data
-            document.getElementById('approved-centers').textContent = 3; // Mock data
-            document.getElementById('rejected-centers').textContent = 1; // Mock data
+        function updateStats(stats) {
+            document.getElementById('pending-count').textContent = stats.pending;
+            document.getElementById('total-centers').textContent = stats.total;
+            document.getElementById('approved-centers').textContent = stats.approved;
+            document.getElementById('rejected-centers').textContent = stats.rejected;
         }
 
         function displayPendingCenters(centers) {
@@ -367,6 +386,66 @@
                 showMessage('Error: ' + error.message, 'error');
             }
         };
+
+        async function loadAllCenters() {
+            const content = document.getElementById('all-centers-content');
+            content.style.display = 'block';
+            content.innerHTML = `
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Fetching all centers...</p>
+                </div>
+            `;
+
+            try {
+                const result = await apiFetch('/api/adoptions/admin/all-centers', 'GET');
+                displayAllCenters(result.centers || []);
+            } catch (error) {
+                console.error('Error loading all centers:', error);
+                showMessage('Error loading all centers: ' + error.message, 'error');
+                content.innerHTML = '<div class="no-data">Error loading data</div>';
+            }
+        }
+
+        function displayAllCenters(centers) {
+            const content = document.getElementById('all-centers-content');
+
+            if (centers.length === 0) {
+                content.innerHTML = '<div class="no-data">No approved centers found</div>';
+                return;
+            }
+
+            let html = `
+                <table class="centers-table">
+                    <thead>
+                        <tr>
+                            <th>Center Name</th>
+                            <th>Location</th>
+                            <th>Contact</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            centers.forEach(center => {
+                html += `
+                    <tr>
+                        <td>${center.center_name}</td>
+                        <td>${center.location}</td>
+                        <td>${center.contact_number}</td>
+                        <td>${center.status}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            content.innerHTML = html;
+        }
 
         function showMessage(text, type) {
             const messageEl = document.getElementById('message');

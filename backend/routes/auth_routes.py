@@ -14,7 +14,9 @@ from backend.controllers.auth_controller import (
     login_user,
     get_user_profile,
     update_adopter_profile,
-    update_center_profile
+    update_center_profile,
+    firebase_login,
+    firebase_register
 )
 
 # Create blueprint
@@ -261,3 +263,53 @@ def center_info():
         user_id=user_id,
         role=claims['role']
     ), 200
+
+
+@auth_bp.route('/firebase-login', methods=['POST'])
+def firebase_login_route():
+    """
+    POST /api/auth/firebase-login
+    Verification of Firebase ID Token and user login.
+    """
+    data = request.json or {}
+    id_token = data.get('idToken')
+    
+    if not id_token:
+        return jsonify(error='Missing idToken'), 400
+        
+    result, status_code = firebase_login(id_token)
+    return jsonify(result), status_code
+
+
+@auth_bp.route('/firebase-register', methods=['POST'])
+def firebase_register_route():
+    """
+    POST /api/auth/firebase-register
+    Complete registration for a new Firebase user.
+    """
+    data = request.json or {}
+    id_token = data.get('idToken')
+    role = data.get('role')
+    username = data.get('username')
+    
+    if not id_token or not role:
+        return jsonify(error='Missing idToken or role'), 400
+        
+    # Extra fields for profile
+    kwargs = {
+        'center_name': data.get('center_name'),
+        'location': data.get('location'),
+        'contact_number': data.get('contact_number'),
+        'full_name': data.get('full_name'),
+        'address': data.get('address'),
+        'phone_number': data.get('phone_number'),
+        'lifestyle': data.get('lifestyle'),
+        'home_environment': data.get('home_environment'),
+        'family_composition': data.get('family_composition'),
+        'pet_experience': data.get('pet_experience'),
+        'preferred_pet_age_min': data.get('preferred_pet_age_min'),
+        'preferred_pet_age_max': data.get('preferred_pet_age_max')
+    }
+    
+    result, status_code = firebase_register(id_token, role, username, **kwargs)
+    return jsonify(result), status_code

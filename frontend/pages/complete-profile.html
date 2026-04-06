@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Profile - PetConnect</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: var(--bg-warm);
+        }
+
+        .container {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+            border: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 15px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error {
+            background: var(--error-bg);
+            color: var(--error-text);
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🐾 Welcome!</h1>
+        <p class="subtitle">Complete your profile to join PetConnect</p>
+
+        <div id="message" class="message"></div>
+
+        <form id="completeProfileForm">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="displayEmail" disabled>
+            </div>
+
+            <div class="form-group">
+                <label for="role">I am a...</label>
+                <select id="role" name="role" required>
+                    <option value="" disabled selected>Select your role</option>
+                    <option value="adopter">Adopter (Looking for a pet)</option>
+                    <option value="center">Adoption Center (Shelter/Organization)</option>
+                </select>
+            </div>
+
+            <!-- Adopter Fields -->
+            <div id="adopterFields" class="hidden">
+                <div class="form-group">
+                    <label for="full_name">Full Name</label>
+                    <input type="text" id="full_name" name="full_name">
+                </div>
+                <div class="form-group">
+                    <label for="phone_number">Phone Number</label>
+                    <input type="text" id="phone_number" name="phone_number">
+                </div>
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <input type="text" id="address" name="address">
+                </div>
+            </div>
+
+            <!-- Center Fields -->
+            <div id="centerFields" class="hidden">
+                <div class="form-group">
+                    <label for="center_name">Center Name</label>
+                    <input type="text" id="center_name" name="center_name">
+                </div>
+                <div class="form-group">
+                    <label for="location">Location</label>
+                    <input type="text" id="location" name="location">
+                </div>
+                <div class="form-group">
+                    <label for="contact_number">Contact Number</label>
+                    <input type="text" id="contact_number" name="contact_number">
+                </div>
+            </div>
+
+            <button type="submit">Complete Registration</button>
+        </form>
+    </div>
+
+    <script type="module">
+        const idToken = sessionStorage.getItem('firebase_id_token');
+        const email = sessionStorage.getItem('firebase_email');
+
+        if (!idToken || !email) {
+            window.location.href = '/adopter-login.html';
+        }
+
+        document.getElementById('displayEmail').value = email;
+
+        const roleSelect = document.getElementById('role');
+        const adopterFields = document.getElementById('adopterFields');
+        const centerFields = document.getElementById('centerFields');
+
+        roleSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'adopter') {
+                adopterFields.classList.remove('hidden');
+                centerFields.classList.add('hidden');
+            } else if (e.target.value === 'center') {
+                centerFields.classList.remove('hidden');
+                adopterFields.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('completeProfileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const role = roleSelect.value;
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            data.idToken = idToken;
+
+            const messageEl = document.getElementById('message');
+
+            try {
+                const response = await fetch('/api/auth/firebase-register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Registration successful, now login
+                    const loginResponse = await fetch('/api/auth/firebase-login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ idToken })
+                    });
+                    const loginData = await loginResponse.json();
+
+                    if (loginData.access_token) {
+                        localStorage.setItem('access_token', loginData.access_token);
+                        localStorage.setItem('user', JSON.stringify(loginData.user));
+                        window.location.href = role === 'adopter' ? '/adopter-dashboard.html' : '/center-dashboard.html';
+                    }
+                } else {
+                    messageEl.textContent = result.error || 'Registration failed';
+                    messageEl.className = 'message error';
+                }
+            } catch (error) {
+                console.error(error);
+                messageEl.textContent = 'An error occurred';
+                messageEl.className = 'message error';
+            }
+        });
+    </script>
+</body>
+
+</html>

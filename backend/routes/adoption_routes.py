@@ -14,7 +14,7 @@ from backend.controllers.adoption_controller import (
     get_feedback_for_center,
     get_feedback_for_adopter
 )
-from backend.controllers.admin_controller import list_pending_centers, review_center
+from backend.controllers.admin_controller import list_pending_centers, review_center, list_all_centers, get_center_stats
 from backend.models.sql_models import AdminLog, AdoptionCenter, Adopter
 from config.py_db import engine, mongo_db
 from sqlalchemy.orm import sessionmaker
@@ -220,6 +220,22 @@ def review_adoption_center(center_id):
         return jsonify(error='Missing or invalid action. Must be "approve" or "reject"'), 400
     admin_user_id = get_jwt_identity()
     result, status = review_center(center_id, admin_user_id, action)
+    return jsonify(result), status
+
+
+@adopt_bp.route('/admin/all-centers', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_all_centers():
+    result, status = list_all_centers()
+    return jsonify(result), status
+
+
+@adopt_bp.route('/admin/center-stats', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_center_stats_route():
+    result, status = get_center_stats()
     return jsonify(result), status
 
 

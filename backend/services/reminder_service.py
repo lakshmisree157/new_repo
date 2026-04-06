@@ -26,7 +26,7 @@ Session = sessionmaker(bind=engine)
 
 def send_reminder_email(adopter_email, adopter_name, dog_name):
     if not GRID_API or not FROM_EMAIL:
-        print("✗ SendGrid not configured. Skipping email.")
+        print("[FAIL] SendGrid not configured. Skipping email.")
         return
 
     message = Mail(
@@ -38,9 +38,9 @@ def send_reminder_email(adopter_email, adopter_name, dog_name):
     try:
         sg = SendGridAPIClient(GRID_API)
         response = sg.send(message)
-        print(f"✓ Reminder sent to {adopter_email} for {dog_name}. Status: {response.status_code}")
+        print(f"[OK] Reminder sent to {adopter_email} for {dog_name}. Status: {response.status_code}")
     except Exception as e:
-        print(f"✗ Failed to send email to {adopter_email}: {e}")
+        print(f"[FAIL] Failed to send email to {adopter_email}: {e}")
 
 def run_reminder_service():
     session = Session()

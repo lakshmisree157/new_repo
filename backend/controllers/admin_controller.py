@@ -65,3 +65,42 @@ def review_center(center_id, admin_user_id, action):
         return {'error': str(e)}, 500
     finally:
         session.close()
+
+
+def list_all_centers():
+    session = Session()
+    try:
+        centers = session.query(AdoptionCenter).all()
+        data = [{
+            'center_id': c.center_id,
+            'center_name': c.center_name,
+            'location': c.location,
+            'contact_number': c.contact_number,
+            'status': c.status.value,
+            'created_at': c.created_at.isoformat() if c.created_at else None
+        } for c in centers]
+        return {'total': len(data), 'centers': data}, 200
+    except SQLAlchemyError as e:
+        return {'error': str(e)}, 500
+    finally:
+        session.close()
+
+
+def get_center_stats():
+    session = Session()
+    try:
+        pending_count = session.query(AdoptionCenter).filter(AdoptionCenter.status == CenterStatusEnum.pending).count()
+        approved_count = session.query(AdoptionCenter).filter(AdoptionCenter.status == CenterStatusEnum.approved).count()
+        rejected_count = session.query(AdoptionCenter).filter(AdoptionCenter.status == CenterStatusEnum.rejected).count()
+        total_count = pending_count + approved_count + rejected_count
+
+        return {
+            'pending': pending_count,
+            'approved': approved_count,
+            'rejected': rejected_count,
+            'total': total_count
+        }, 200
+    except SQLAlchemyError as e:
+        return {'error': str(e)}, 500
+    finally:
+        session.close()
